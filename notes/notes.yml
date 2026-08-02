@@ -1,0 +1,11 @@
+# Which notes are published, and where each one's source PDF lives.
+#
+# Being listed here is what makes a note public. `source` is relative to
+# the NOTES_ROOT environment variable (default: ~/Dropbox (Personal)/notes)
+# so that no machine-specific path is committed to this public repo.
+#
+# After editing, run: python scripts/sync_notes.py
+#
+# Removing an entry does NOT unpublish the note — see "Unpublishing a note"
+# in the README.
+[]

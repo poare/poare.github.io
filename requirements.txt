@@ -4,3 +4,4 @@ brotli
 pymupdf
 jupyter
 matplotlib
+pyyaml

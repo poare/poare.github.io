@@ -814,3 +814,107 @@ def test_render_thumbnail_rejects_an_empty_pdf(tmp_path, monkeypatch):
 
     with pytest.raises(make_thumbs.EmptyPdfError):
         make_thumbs.render_thumbnail(pdf_path)
+
+
+def test_manifest_slugs_are_kebab_case():
+    """A slug becomes a public URL. snake_case or capitals reaching it is
+    both ugly and, for search engines, a single unreadable token — and it
+    is not fixable later without breaking a published link.
+    """
+    from scripts import sync_notes
+
+    entries = sync_notes.load_manifest(sync_notes.MANIFEST)
+    assert entries, "notes.yml lists no notes"
+    for entry in entries:
+        assert sync_notes.SLUG_RE.match(entry["slug"]), (
+            f"slug {entry['slug']!r} is not kebab-case"
+        )
+
+
+def test_every_manifest_entry_has_its_files():
+    """Catches the 'added an entry, forgot to run the sync' failure, which
+    otherwise surfaces as a 404 on the live site rather than a test failure.
+    """
+    from scripts import sync_notes
+
+    for entry in sync_notes.load_manifest(sync_notes.MANIFEST):
+        slug, topic = entry["slug"], entry["topic"]
+        for expected in (
+            REPO_ROOT / "notes" / "pdf" / f"{slug}.pdf",
+            REPO_ROOT / "notes" / "thumbs" / f"{slug}.png",
+            REPO_ROOT / "notes" / topic / f"{slug}.md",
+        ):
+            assert expected.is_file(), (
+                f"{expected.relative_to(REPO_ROOT)} is missing — run "
+                "python scripts/sync_notes.py"
+            )
+
+
+def test_manifest_rejects_a_bad_entry(tmp_path):
+    """load_manifest is the only thing standing between a typo and a
+    half-published note, so its validation is tested directly rather than
+    trusted.
+    """
+    from scripts import sync_notes
+
+    def write(text):
+        path = tmp_path / "notes.yml"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    with pytest.raises(sync_notes.ManifestError, match="missing"):
+        sync_notes.load_manifest(write("- slug: a-note\n  topic: physics\n"))  # no source
+
+    with pytest.raises(sync_notes.ManifestError, match="kebab-case"):
+        sync_notes.load_manifest(write("- slug: A_Note\n  source: x.pdf\n  topic: physics\n"))
+
+    with pytest.raises(sync_notes.ManifestError, match="unknown"):
+        sync_notes.load_manifest(
+            write("- slug: a-note\n  source: x.pdf\n  topic: physics\n  title: nope\n")
+        )
+
+    with pytest.raises(sync_notes.ManifestError, match="duplicate"):
+        sync_notes.load_manifest(
+            write(
+                "- slug: a-note\n  source: x.pdf\n  topic: physics\n"
+                "- slug: a-note\n  source: y.pdf\n  topic: math\n"
+            )
+        )
+
+
+def test_sync_never_overwrites_an_existing_stub(tmp_path):
+    """The property the whole design rests on. A stub holds hand-written
+    prose — errata, 'supersedes the 2024 version', links to related notes.
+    Re-running the sync after recompiling a PDF must refresh the binary and
+    the thumbnail and leave every word of that prose alone.
+    """
+    from scripts import sync_notes
+
+    stub = tmp_path / "lorentz-poincare-groups.md"
+
+    assert sync_notes.scaffold_stub(stub, "lorentz-poincare-groups", "physics") is True
+    scaffolded = stub.read_text(encoding="utf-8")
+    assert "{{< pdf-note" in scaffolded
+    assert "../thumbs/lorentz-poincare-groups.png" in scaffolded
+
+    hand_written = scaffolded + "\n\nSupersedes the 2024 version.\n"
+    stub.write_text(hand_written, encoding="utf-8")
+
+    assert sync_notes.scaffold_stub(stub, "lorentz-poincare-groups", "physics") is False
+    assert stub.read_text(encoding="utf-8") == hand_written, (
+        "scaffold_stub overwrote an existing stub and destroyed hand-written prose"
+    )
+
+
+def test_notes_root_is_overridable(monkeypatch, tmp_path):
+    """The Ubuntu machine's notes tree is not at the macOS default. The env
+    var is the only thing that makes the committed manifest portable, so a
+    regression here would break the second machine silently.
+    """
+    from scripts import sync_notes
+
+    monkeypatch.setenv("NOTES_ROOT", str(tmp_path))
+    assert sync_notes.notes_root() == tmp_path
+
+    monkeypatch.delenv("NOTES_ROOT", raising=False)
+    assert sync_notes.notes_root() == Path("~/Dropbox (Personal)/notes").expanduser()
