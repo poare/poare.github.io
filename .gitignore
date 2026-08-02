@@ -1,0 +1,12 @@
+.superpowers/
+
+_site/
+.quarto/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+**/*.quarto_ipynb
+
+/.quarto/

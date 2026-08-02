@@ -1,0 +1,12 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Patrick Oare"
+  navbar:
+    left: []
+
+format:
+  html:
+    toc: false
