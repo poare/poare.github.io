@@ -610,3 +610,29 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
         )
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
+
+
+def test_cname_is_copied_to_output(site):
+    """The `CNAME` file at the repo root tells GitHub Pages which custom
+    domain to serve the site under. Because Actions-based deployment
+    rebuilds the published artifact on every run, the domain has to live in
+    the repository (via `resources:` in _quarto.yml) rather than only in
+    the repo's GitHub Pages settings -- otherwise a redeploy silently drops
+    the custom domain and the site reverts to the default github.io URL
+    with no error anywhere.
+
+    This test is deliberately strict about content, not just presence: a
+    CNAME file that exists but is empty, or that names the wrong domain,
+    would still "detach" the real custom domain just as silently as a
+    missing file, so both failure modes must be caught here.
+    """
+    cname = site / "CNAME"
+    assert cname.is_file(), (
+        "CNAME was not copied into _site -- check the resources config in "
+        "_quarto.yml"
+    )
+    assert cname.read_text(encoding="utf-8") == "www.patrickoare.phd\n", (
+        "CNAME in _site does not contain exactly 'www.patrickoare.phd' -- "
+        "a missing, empty, or wrong-domain CNAME silently detaches the "
+        "custom domain on the next deploy"
+    )

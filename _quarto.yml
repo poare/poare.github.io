@@ -4,6 +4,7 @@ project:
   resources:
     - notes/pdf/
     - cv/*.pdf
+    - CNAME
 
 website:
   title: "Patrick Oare"
