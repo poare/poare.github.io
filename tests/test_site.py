@@ -191,6 +191,74 @@ def test_inline_math_delimiters_were_consumed_by_pandoc(site):
     assert "$\\kappa(D)$" not in html, "delimiters survived; maths was not parsed"
 
 
+def test_blog_lists_the_post(site):
+    """The post title must appear *inside the rendered listing card* and
+    link to the post's real page — not merely appear somewhere on the page
+    (e.g. a <title> tag or a search-index leak), which would pass even if
+    the `listing:` block were misconfigured and rendered nothing."""
+    html = read_html(site, "blog/index.html")
+    listing = extract_element(html, "quarto-listing")
+    assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
+    assert "Deflation and the low modes" in listing, "post title missing from the rendered listing card"
+    assert 'href="../blog/posts/2026-08-01-hello/index.html"' in listing, (
+        "listing card does not link to the post's actual page"
+    )
+
+
+def test_blog_shows_category_tags(site):
+    """Category tags must render as Quarto's clickable filter widget, not
+    as plain text. This checks two independent things the `categories: true`
+    listing option produces: (1) each post card carries its categories as
+    `listing-category` elements wired to `quartoListingCategory()`, the JS
+    click handler that filters the grid; and (2) the sidebar gets a
+    `quarto-listing-category` filter panel with a real `data-category` value
+    per tag. Plain-text tags, or omitting `categories: true`, would fail
+    both checks.
+    """
+    html = read_html(site, "blog/index.html")
+
+    listing = extract_element(html, "quarto-listing")
+    assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
+    card_tags = re.findall(
+        r'class="listing-category"\s+onclick="window\.quartoListingCategory\([^)]*\)[^>]*>\s*(solvers|lattice)\s*</div>',
+        listing,
+    )
+    assert set(card_tags) == {"solvers", "lattice"}, (
+        f"post card is missing clickable category tags for solvers/lattice, found: {card_tags}"
+    )
+
+    sidebar = extract_element(html, "quarto-listing-category")
+    assert sidebar, "no category filter panel (class 'quarto-listing-category') rendered in the sidebar"
+    sidebar_tags = re.findall(
+        r'<div class="category" data-category="[^"]+">\s*(solvers|lattice)\b', sidebar
+    )
+    assert set(sidebar_tags) == {"solvers", "lattice"}, (
+        f"sidebar filter panel is missing clickable entries for solvers/lattice, found: {sidebar_tags}"
+    )
+
+
+def test_blog_has_currently_reading_header(site):
+    """'Currently reading' must render as a real heading, positioned above
+    the generated listing, with the hand-written book list under it — this
+    is the editable-prose header, not text that happens to appear anywhere
+    on the page (e.g. leaking in from a post body). Checking heading markup
+    and document order together rules out both a plain-text stand-in and a
+    header accidentally placed below the `:::{#posts}:::` div.
+    """
+    html = read_html(site, "blog/index.html")
+    assert '<h3 class="anchored" data-anchor-id="currently-reading">Currently reading</h3>' in html, (
+        "'Currently reading' is not rendered as a heading"
+    )
+    header_pos = html.find("Currently reading")
+    listing_pos = html.find('id="listing-posts"')
+    assert listing_pos != -1, "generated listing container not found"
+    assert header_pos < listing_pos, (
+        "the 'currently reading' header must render above the generated listing"
+    )
+    for book in ("Modern Quantum Mechanics", "Iterative Methods for Sparse Linear Systems"):
+        assert book in html, f"reading list is missing {book!r}"
+
+
 def test_display_math_delimiters_were_consumed_by_pandoc(site):
     """As above, for the $$...$$ display equation: Pandoc must recognise it
     and produce a <span class="math display"> node containing the raw LaTeX,
