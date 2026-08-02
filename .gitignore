@@ -15,4 +15,8 @@ __pycache__/
 # directory at the repo root.
 blog/posts/**/index_files/
 
-/.quarto/
+# Ephemeral test fixture: created by the `site` pytest fixture before
+# rendering (to exercise the `resources:` key on an unreferenced file) and
+# deleted again afterwards. Never intended to be tracked or shipped.
+notes/pdf/orphan-fixture.pdf
+notes/thumbs/orphan-fixture.png
