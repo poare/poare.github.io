@@ -1,0 +1,30 @@
+---
+title: "Convergence of a Krylov solver"
+date: 2026-08-02
+categories: [solvers, python]
+---
+
+A quick demonstration that executable code works on this site. The residual of
+a Krylov method typically falls geometrically until it stagnates.
+
+```{python}
+#| label: fig-residual
+#| fig-cap: "Residual norm against iteration count."
+#| echo: true
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+iterations = np.arange(0, 60)
+residual = np.exp(-0.12 * iterations) + 1e-9
+
+fig, ax = plt.subplots(figsize=(5.5, 3.4))
+ax.semilogy(iterations, residual, color="#750014", linewidth=1.6)
+ax.set_xlabel("iteration")
+ax.set_ylabel(r"$\|r_k\| / \|r_0\|$")
+ax.grid(True, which="both", alpha=0.25)
+fig.tight_layout()
+plt.show()
+```
+
+The figure above was generated when this page was rendered, not pasted in.

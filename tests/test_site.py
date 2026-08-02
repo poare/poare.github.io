@@ -1,4 +1,8 @@
+import os
 import re
+import shutil
+import subprocess
+from pathlib import Path
 
 from conftest import extract_element, read_html, REPO_ROOT
 
@@ -449,3 +453,103 @@ def test_cv_download_link_resolves_to_a_real_file(site):
         )
 
     assert found_local_link, "no local PDF links found (only off-site URLs)"
+
+
+NOTEBOOK_POST = "blog/posts/2026-08-02-notebook-demo/index.html"
+
+
+def test_notebook_post_rendered_a_figure(site):
+    html = read_html(site, NOTEBOOK_POST)
+    assert "<img" in html or "data:image/png" in html, (
+        "the notebook produced no figure"
+    )
+
+
+def test_freeze_cache_is_committed():
+    freeze = REPO_ROOT / "_freeze"
+    assert freeze.is_dir(), (
+        "_freeze/ must exist and be committed so CI needs no Python"
+    )
+    assert any(freeze.rglob("*.json")), "_freeze/ contains no cached output"
+
+
+def test_freeze_is_not_gitignored():
+    ignored = (REPO_ROOT / ".gitignore").read_text()
+    assert "_freeze" not in ignored, "_freeze/ must be committed, not ignored"
+
+
+def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
+    """Render the whole project again with no `python3` reachable anywhere on
+    PATH. If quarto still produces the figure, it can only have come from the
+    committed _freeze/ cache, not from re-executing the notebook -- this is
+    exactly the guarantee Task 10's CI depends on, since its workflow
+    installs no Python at all.
+
+    Note this deliberately runs a *project* render (`quarto render`, no
+    target), matching what CI does. Targeting the single .qmd file directly
+    (`quarto render path/to/index.qmd`) always re-executes the code cell
+    regardless of the freeze cache -- freeze is a project-level render
+    optimization, not a per-file one -- so that form would not exercise the
+    thing this test is trying to prove.
+
+    Building a hostile-but-functional PATH takes some care: quarto's launcher
+    script itself shells out to coreutils like dirname/readlink/basename, and
+    those normally live in /usr/bin alongside the very python3 (and pip3) we
+    need to hide -- so we can't just drop /usr/bin from PATH. Instead we
+    stage a bin/ directory that symlinks every /usr/bin entry *except*
+    python3/pip3, plus quarto's own directory, /bin, /usr/sbin and /sbin
+    (none of which ship a python3 on this machine). The result is a PATH
+    that can run quarto's own tooling but has no way to find or launch a
+    Jupyter kernel.
+
+    This reuses the already-rendered `site` fixture only to force it to run
+    first (so the freeze cache reflects the current source before we probe
+    it) and to know where quarto lives; it then does a second, independent
+    project render subprocess with the hostile PATH, writing into the same
+    _site/ output directory.
+    """
+    quarto_bin = shutil.which("quarto")
+    assert quarto_bin, "quarto not found on PATH"
+
+    stage = tmp_path / "hostile-bin"
+    stage.mkdir()
+    for entry in Path("/usr/bin").iterdir():
+        if entry.name in ("python3", "pip3"):
+            continue
+        (stage / entry.name).symlink_to(entry)
+
+    assert shutil.which("python3", path=str(stage)) is None, (
+        "test setup bug: python3 leaked into the staged bin directory"
+    )
+
+    hostile_path = os.pathsep.join(
+        [os.path.dirname(quarto_bin), str(stage), "/bin", "/usr/sbin", "/sbin"]
+    )
+    env = dict(os.environ)
+    env["PATH"] = hostile_path
+    env.pop("PYTHONPATH", None)
+
+    assert shutil.which("python3", path=hostile_path) is None, (
+        "test setup bug: python3 is still reachable on the hostile PATH"
+    )
+
+    result = subprocess.run(
+        [quarto_bin, "render"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert result.returncode == 0, (
+        "quarto render failed with no Python on PATH -- the freeze cache "
+        f"was not reused:\n{result.stdout}\n{result.stderr}"
+    )
+    assert "Starting python3 kernel" not in result.stdout, (
+        "quarto tried to launch a kernel -- it re-executed the notebook "
+        "instead of reusing the freeze cache"
+    )
+
+    html = read_html(site, NOTEBOOK_POST)
+    assert "<img" in html or "data:image/png" in html, (
+        "figure missing after a Python-free render"
+    )

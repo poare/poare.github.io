@@ -20,6 +20,9 @@ website:
       - text: "Blog"
         href: blog/index.md
 
+execute:
+  freeze: auto
+
 format:
   html:
     theme: theme.scss
