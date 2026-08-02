@@ -29,22 +29,39 @@ def main():
         print(f"No PDFs found in {PDF_DIR}")
         return
 
+    failed = []
+
     for pdf_path in pdfs:
         target = THUMB_DIR / f"{pdf_path.stem}.png"
         if target.exists() and not force:
             print(f"skip   {target.name}")
             continue
 
-        with fitz.open(pdf_path) as doc:
-            if doc.page_count == 0:
-                print(f"WARN   {pdf_path.name} has no pages, skipping")
-                continue
-            page = doc.load_page(0)
-            pixmap = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM))
-            pixmap.save(target)
+        # A single encrypted/corrupt PDF must not abort the whole batch —
+        # this runs over dozens of real files, and pdfs is sorted, so an
+        # uncaught exception here would silently skip every file that
+        # sorts after the bad one.
+        try:
+            with fitz.open(pdf_path) as doc:
+                if doc.page_count == 0:
+                    print(f"WARN   {pdf_path.name} has no pages, skipping")
+                    continue
+                page = doc.load_page(0)
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM))
+                pixmap.save(target)
+        except Exception as exc:
+            print(f"ERROR  {pdf_path.name}: {exc}")
+            failed.append(pdf_path.name)
+            continue
 
         kb = target.stat().st_size / 1024
         print(f"wrote  {target.name}  ({kb:.0f} KB)")
+
+    if failed:
+        print(f"\n{len(failed)} of {len(pdfs)} PDF(s) failed:")
+        for name in failed:
+            print(f"  - {name}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

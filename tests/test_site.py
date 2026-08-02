@@ -315,6 +315,24 @@ def test_note_stub_has_indexable_description(site):
     )
 
 
+def test_note_stub_meta_description_tag_is_populated(site):
+    """The body text alone (checked above) does not prove the front-matter
+    `description:` reached the actual <meta name="description"> tag search
+    engines read for the results-page snippet — a test on body text alone
+    would still pass if that pipeline were broken. Verified against the real
+    rendered output that Quarto emits the tag in this exact form:
+    <meta name="description" content="...">. Verified this discriminates: with
+    the front-matter `description:` line removed, this test fails (no such
+    meta tag is rendered); restored, it passes. See task-7-report.md.
+    """
+    html = read_html(site, NOTE)
+    match = re.search(r'<meta name="description" content="([^"]*)">', html)
+    assert match, "no <meta name=\"description\"> tag rendered on the stub page"
+    assert "condition number" in match.group(1).lower(), (
+        "meta description tag does not contain the front-matter description text"
+    )
+
+
 def test_notes_index_groups_by_topic(site):
     html = read_html(site, "notes/index.html")
     assert "Lattice QCD" in html, "topic heading is missing"
@@ -322,8 +340,22 @@ def test_notes_index_groups_by_topic(site):
 
 
 def test_pdf_is_copied_to_output(site):
-    pdfs = list((site / "notes" / "pdf").glob("*.pdf"))
-    assert pdfs, "no PDFs were copied into _site — check the resources config"
+    """`notes/pdf/orphan-fixture.pdf` is deliberately unreferenced by any
+    stub page. Quarto's dependency scanner copies a PDF into _site whenever
+    some rendered page links to it (e.g. example-note.pdf, via the stub's
+    <object data=...>) — that would make this test pass even with the
+    `resources:` key removed from _quarto.yml entirely. The whole point of
+    `resources:` is to copy files that *nothing links to yet* (e.g. a PDF
+    just dropped into notes/pdf/ before its stub page exists), so only an
+    orphan file actually exercises that key. Verified: with `resources:`
+    removed, this test fails (orphan-fixture.pdf is absent from _site);
+    restored, it passes. See task-7-report.md for the captured output.
+    """
+    orphan = site / "notes" / "pdf" / "orphan-fixture.pdf"
+    assert orphan.is_file(), (
+        "orphan-fixture.pdf (unreferenced by any stub) was not copied into "
+        "_site — check the resources config in _quarto.yml"
+    )
 
 
 def test_note_thumbnail_is_generated_and_referenced(site):
