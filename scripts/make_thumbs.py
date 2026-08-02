@@ -50,7 +50,7 @@ def main():
                 pixmap = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM))
                 pixmap.save(target)
         except Exception as exc:
-            print(f"ERROR  {pdf_path.name}: {exc}")
+            print(f"ERROR  {pdf_path.name}: {type(exc).__name__}: {exc}")
             failed.append(pdf_path.name)
             continue
 

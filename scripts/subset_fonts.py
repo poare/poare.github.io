@@ -55,22 +55,35 @@ def find_source(face):
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     missing = []
+    failed = []
     for face in FACES:
         source = find_source(face)
         if source is None:
             missing.append(face)
             continue
         target = OUT_DIR / f"{face}.woff2"
-        subprocess.run(
-            [
-                sys.executable, "-m", "fontTools.subset", str(source),
-                f"--output-file={target}",
-                "--flavor=woff2",
-                "--layout-features=*",
-                f"--unicodes={UNICODES}",
-            ],
-            check=True,
-        )
+
+        # A single bad face (e.g. a corrupt TTF, or one fontTools chokes on
+        # for some unicode range it doesn't like) must not abort the whole
+        # run -- this regenerates all six committed WOFF2 files in one go,
+        # so an uncaught exception here would silently leave every face
+        # after the bad one un-subsetted.
+        try:
+            subprocess.run(
+                [
+                    sys.executable, "-m", "fontTools.subset", str(source),
+                    f"--output-file={target}",
+                    "--flavor=woff2",
+                    "--layout-features=*",
+                    f"--unicodes={UNICODES}",
+                ],
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            print(f"ERROR  {face}: {type(exc).__name__}: {exc}")
+            failed.append(face)
+            continue
+
         kb = target.stat().st_size / 1024
         print(f"{face}.woff2  {kb:6.1f} KB")
 
@@ -81,6 +94,13 @@ def main():
             + "\nInstall the CMU Unicode fonts, then re-run.",
             file=sys.stderr,
         )
+
+    if failed:
+        print(f"\n{len(failed)} of {len(FACES)} face(s) failed to subset:")
+        for face in failed:
+            print(f"  - {face}")
+
+    if missing or failed:
         sys.exit(1)
 
 
