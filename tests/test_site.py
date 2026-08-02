@@ -466,11 +466,40 @@ def test_notebook_post_rendered_a_figure(site):
 
 
 def test_freeze_cache_is_committed():
+    """_freeze/ must be *git-tracked*, not merely present on disk.
+
+    Checking only for the directory's existence (and a *.json somewhere
+    inside it) would also pass for a cache that was generated locally and
+    never `git add`-ed -- exactly the state that makes Task 10's CI fail
+    demanding Jupyter, since CI clones the repo and gets only tracked
+    files, not whatever a contributor happens to have sitting in their
+    working tree. So we ask git itself what is tracked, rather than the
+    filesystem.
+    """
     freeze = REPO_ROOT / "_freeze"
     assert freeze.is_dir(), (
         "_freeze/ must exist and be committed so CI needs no Python"
     )
-    assert any(freeze.rglob("*.json")), "_freeze/ contains no cached output"
+
+    result = subprocess.run(
+        ["git", "ls-files", "_freeze/"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"git ls-files _freeze/ failed:\n{result.stderr}"
+
+    tracked = [line for line in result.stdout.splitlines() if line]
+    assert tracked, (
+        "_freeze/ exists on disk but git tracks nothing inside it -- "
+        "run `git add _freeze/` and commit"
+    )
+    assert any(
+        "execute-results" in path and path.endswith(".json") for path in tracked
+    ), (
+        "_freeze/ is tracked by git but none of the tracked paths look like "
+        f"an execute-results/*.json cache: {tracked}"
+    )
 
 
 def test_freeze_is_not_gitignored():
@@ -479,77 +508,91 @@ def test_freeze_is_not_gitignored():
 
 
 def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
-    """Render the whole project again with no `python3` reachable anywhere on
-    PATH. If quarto still produces the figure, it can only have come from the
-    committed _freeze/ cache, not from re-executing the notebook -- this is
-    exactly the guarantee Task 10's CI depends on, since its workflow
-    installs no Python at all.
+    """Render the whole project again with every python3/python/jupyter
+    lookup on PATH shadowed by a shim that fails loudly. If quarto still
+    produces the figure, and the shim never fires, the figure can only have
+    come from the committed _freeze/ cache, not from re-executing the
+    notebook -- this is exactly the guarantee Task 10's CI depends on, since
+    its workflow installs no Python at all.
+
+    We use shims rather than a stripped-down PATH. An earlier version of
+    this test built a "hostile" PATH by symlinking every entry of /usr/bin
+    except python3/pip3, plus a few hard-coded system directories, into a
+    staging directory. That approach silently depends on the filesystem
+    layout of one specific machine: on this project's other development
+    machine (an Ubuntu desktop, vs. the macOS laptop this was written on) a
+    versioned `python3.12` binary can live somewhere that scheme doesn't
+    strip, defeating the isolation, or a tool quarto's own launcher needs
+    can live outside those four directories, breaking the render for
+    reasons that have nothing to do with Python. A test that fails for the
+    wrong reason on a second platform is worse than no test -- this project
+    has already deleted a test for exactly that fault.
+
+    Shims sidestep the whole problem, because they depend on no directory
+    layout at all: we prepend one directory containing executable
+    stand-ins named python3, python and jupyter to PATH, ahead of
+    everything already there. PATH shadowing works identically on macOS
+    and Linux, so the shim directory hides real Python entry points
+    without removing or symlinking a single thing from the rest of PATH --
+    coreutils and quarto's own launcher are untouched on any platform.
 
     Note this deliberately runs a *project* render (`quarto render`, no
     target), matching what CI does. Targeting the single .qmd file directly
     (`quarto render path/to/index.qmd`) always re-executes the code cell
     regardless of the freeze cache -- freeze is a project-level render
     optimization, not a per-file one -- so that form would not exercise the
-    thing this test is trying to prove.
-
-    Building a hostile-but-functional PATH takes some care: quarto's launcher
-    script itself shells out to coreutils like dirname/readlink/basename, and
-    those normally live in /usr/bin alongside the very python3 (and pip3) we
-    need to hide -- so we can't just drop /usr/bin from PATH. Instead we
-    stage a bin/ directory that symlinks every /usr/bin entry *except*
-    python3/pip3, plus quarto's own directory, /bin, /usr/sbin and /sbin
-    (none of which ship a python3 on this machine). The result is a PATH
-    that can run quarto's own tooling but has no way to find or launch a
-    Jupyter kernel.
+    thing this test is trying to prove. Do not "optimise" this into a
+    single-file render.
 
     This reuses the already-rendered `site` fixture only to force it to run
     first (so the freeze cache reflects the current source before we probe
     it) and to know where quarto lives; it then does a second, independent
-    project render subprocess with the hostile PATH, writing into the same
-    _site/ output directory.
+    project render subprocess with the shimmed PATH, writing into a
+    temporary output directory (via --output-dir) so the repo's real
+    _site/ is left untouched.
     """
     quarto_bin = shutil.which("quarto")
     assert quarto_bin, "quarto not found on PATH"
 
-    stage = tmp_path / "hostile-bin"
-    stage.mkdir()
-    for entry in Path("/usr/bin").iterdir():
-        if entry.name in ("python3", "pip3"):
-            continue
-        (stage / entry.name).symlink_to(entry)
+    marker = "FREEZE-SHIM-INVOKED"
+    shim_dir = tmp_path / "python-shim"
+    shim_dir.mkdir()
+    for name in ("python3", "python", "jupyter"):
+        shim = shim_dir / name
+        shim.write_text(
+            "#!/bin/sh\n"
+            f'echo "{marker}: {name}" >&2\n'
+            "exit 1\n"
+        )
+        shim.chmod(0o755)
 
-    assert shutil.which("python3", path=str(stage)) is None, (
-        "test setup bug: python3 leaked into the staged bin directory"
-    )
-
-    hostile_path = os.pathsep.join(
-        [os.path.dirname(quarto_bin), str(stage), "/bin", "/usr/sbin", "/sbin"]
-    )
     env = dict(os.environ)
-    env["PATH"] = hostile_path
-    env.pop("PYTHONPATH", None)
+    env["PATH"] = f"{shim_dir}{os.pathsep}{env['PATH']}"
 
-    assert shutil.which("python3", path=hostile_path) is None, (
-        "test setup bug: python3 is still reachable on the hostile PATH"
-    )
+    out_dir = tmp_path / "shim-render-out"
 
     result = subprocess.run(
-        [quarto_bin, "render"],
+        [quarto_bin, "render", "--output-dir", str(out_dir)],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         env=env,
     )
     assert result.returncode == 0, (
-        "quarto render failed with no Python on PATH -- the freeze cache "
-        f"was not reused:\n{result.stdout}\n{result.stderr}"
+        "quarto render failed with a shimmed Python on PATH -- the freeze "
+        f"cache was not reused:\n{result.stdout}\n{result.stderr}"
     )
-    assert "Starting python3 kernel" not in result.stdout, (
-        "quarto tried to launch a kernel -- it re-executed the notebook "
-        "instead of reusing the freeze cache"
+    assert marker not in result.stdout and marker not in result.stderr, (
+        "quarto invoked a python3/python/jupyter shim -- it re-executed the "
+        f"notebook instead of reusing the freeze cache:\n"
+        f"{result.stdout}\n{result.stderr}"
     )
 
-    html = read_html(site, NOTEBOOK_POST)
+    rendered = out_dir / NOTEBOOK_POST
+    assert rendered.is_file(), (
+        f"expected rendered notebook page at {rendered}, not found"
+    )
+    html = rendered.read_text(encoding="utf-8")
     assert "<img" in html or "data:image/png" in html, (
         "figure missing after a Python-free render"
     )
