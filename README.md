@@ -22,6 +22,20 @@ and deployed to GitHub Pages.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
 
+## Unpublishing a note
+
+**Taking a note off the site is always a manual `git rm`.** Nothing automates
+it, on purpose. Remove all three files:
+
+    git rm notes/<topic>/<slug>.md notes/pdf/<slug>.pdf notes/thumbs/<slug>.png
+
+Deleting only the stub leaves the PDF reachable at its direct URL — the page
+disappears, the download does not.
+
+Note that `git rm` removes the file from the *current* site, not from history:
+the PDF stays in every earlier commit, and this repo is public. Treat
+publishing as irreversible and decide before committing, not after.
+
 ## Conventions worth knowing
 
 - **Use `.md` for prose, `.qmd` only for pages that execute code.** Markdown

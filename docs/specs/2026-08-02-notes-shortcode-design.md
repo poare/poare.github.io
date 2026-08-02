@@ -173,7 +173,18 @@ Assertions against rendered HTML use the existing `extract_element()` helper in
    its `##` heading and listing block come out of `notes/index.md` at the same
    time — an empty listing renders as a bare heading with nothing under it.
 5. Update the README's "Adding content" section to describe the manifest
-   workflow.
+   workflow, and extend its "Unpublishing a note" section to add removing the
+   `notes.yml` entry. Removing that entry alone does not unpublish — the files
+   stay until they are `git rm`'d, and the entry must go too or the
+   manifest-consistency test will fail on a missing PDF.
+
+## Confirmed and outstanding
+
+- `NOTES_ROOT` default `~/Dropbox (Personal)/notes` is correct on the macOS
+  machine. **Unconfirmed on the Ubuntu machine** — to be checked; if it
+  differs, only the env var changes, not the manifest.
+- The `[physics, group-theory]` categories on the first note are provisional.
+  Category taxonomy gets revisited once enough notes exist to see it whole.
 
 Topic groupings beyond `physics` are deferred until more notes are assembled.
 The source tree's existing `math` / `physics` split is the natural starting
