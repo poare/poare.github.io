@@ -95,4 +95,12 @@ def extract_element(html, class_name):
     """
     parser = _SubtreeExtractor(class_name)
     parser.feed(html)
+    if parser.capturing and not parser.finished:
+        raise AssertionError(
+            f"extract_element: found an element with class {class_name!r} but "
+            "its markup never closed (depth never returned to zero) before the "
+            "input ended. The captured fragment would have been silently "
+            "widened to include unrelated trailing content. Fix the unclosed "
+            "tag in the source HTML rather than trusting this fragment."
+        )
     return "".join(parser.chunks)
