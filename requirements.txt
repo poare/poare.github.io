@@ -2,3 +2,5 @@ pytest
 fonttools
 brotli
 pymupdf
+jupyter
+matplotlib
