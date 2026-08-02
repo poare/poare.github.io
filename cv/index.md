@@ -1,5 +1,18 @@
 ---
-title: "CV"
+title: "Curriculum Vitae"
 ---
 
-Placeholder. Task 8 builds this page.
+::: {.accent-rule}
+:::
+
+[Download PDF](patrick-oare-cv.pdf){.btn .btn-primary}
+
+## Education
+
+Replace these placeholder sections with real content.
+
+## Positions
+
+## Publications
+
+## Talks

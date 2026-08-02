@@ -404,3 +404,14 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
         "<section> did not close where expected, which would reparent any "
         "topic added after this one"
     )
+
+
+def test_cv_page_has_download_link(site):
+    html = read_html(site, "cv/index.html")
+    assert "patrick-oare-cv.pdf" in html, "CV download link is missing"
+
+
+def test_cv_pdf_is_copied_to_output(site):
+    assert (site / "cv" / "patrick-oare-cv.pdf").is_file(), (
+        "the CV PDF was not copied into _site"
+    )

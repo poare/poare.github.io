@@ -3,6 +3,7 @@ project:
   output-dir: _site
   resources:
     - notes/pdf/
+    - cv/*.pdf
 
 website:
   title: "Patrick Oare"
