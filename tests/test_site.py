@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from conftest import extract_element, read_html, REPO_ROOT
+from conftest import assert_local_links_resolve, extract_element, read_html, REPO_ROOT
 
 
 def test_homepage_is_generated(site):
@@ -31,6 +31,32 @@ def test_no_raw_ttf_committed():
     assert stray == [], f"unsubsetted TTFs must not be committed: {stray}"
 
 
+def test_tracked_qmd_files_execute_code():
+    """README states the convention: use `.md` for prose, `.qmd` only for
+    pages that execute code (Obsidian and other plain-markdown editors don't
+    index `.qmd`). Nothing previously enforced that split — a `.qmd` saved
+    with a heading and some prose but no code cell would silently violate
+    the convention and only cost the next editor Obsidian's indexing, a
+    failure mode with no obvious symptom. This checks every git-tracked
+    `.qmd` for at least one executable code fence (```` ```{...} ````).
+    """
+    result = subprocess.run(
+        ["git", "ls-files", "*.qmd"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"git ls-files *.qmd failed:\n{result.stderr}"
+    qmd_files = [line for line in result.stdout.splitlines() if line]
+    assert qmd_files, "no .qmd files are tracked -- nothing to check"
+    for relpath in qmd_files:
+        text = (REPO_ROOT / relpath).read_text(encoding="utf-8")
+        assert "```{" in text, (
+            f"{relpath} has a .qmd extension but contains no executable "
+            "code fence ('```{...}') -- use .md instead if it is plain prose"
+        )
+
+
 def compiled_css(site):
     """Concatenate every generated stylesheet — Quarto's output path varies."""
     return "\n".join(
@@ -42,6 +68,19 @@ def compiled_css(site):
 def test_accent_colour_reaches_compiled_css(site):
     css = compiled_css(site).lower()
     assert "#750014" in css, "MIT red is missing from the compiled stylesheet"
+
+
+def test_base_font_size_reaches_compiled_css(site):
+    """theme.scss deliberately sets an 18px (not Bootstrap's default 16px)
+    root font size — see the comment next to $font-size-root there: CMU's
+    strokes are drawn for print and read too thin at 16px on screen.
+    Nothing previously asserted on the compiled value, so silently editing
+    theme.scss back down to 16px passed every test in the suite.
+    """
+    css = compiled_css(site)
+    assert "--bs-root-font-size: 18px" in css, (
+        "compiled CSS does not set the 18px root font size from theme.scss"
+    )
 
 
 def test_fonts_are_referenced_by_css(site):
@@ -83,7 +122,9 @@ def test_colours_are_variables_not_literals():
     colour_func = re.compile(r":[^;]*\b(?:rgb|rgba|hsl|hsla)\(")
     colour_word = re.compile(
         r":\s*(?:red|blue|green|black|white|gray|grey|orange|purple|yellow"
-        r"|pink|brown|navy|teal|olive|maroon|silver|aqua|fuchsia|lime)\b"
+        r"|pink|brown|navy|teal|olive|maroon|silver|aqua|fuchsia|lime"
+        r"|transparent|currentcolor|cyan|magenta)\b",
+        re.IGNORECASE,
     )
 
     offenders = []
@@ -154,9 +195,10 @@ POST = "blog/posts/2026-08-01-hello/index.html"
 # output can actually establish: that the KaTeX library is wired up and
 # pinned to a fixed version, and that Pandoc recognised and consumed the
 # $...$ / $$...$$ delimiters into maths nodes for KaTeX to target. Real
-# rendering was verified by hand in a browser (see task-5-report.md) rather
-# than by this suite, since a permanent headless-browser test rig was judged
-# disproportionate for this site.
+# rendering was verified by hand: opening the built post in an actual
+# browser and confirming both the inline and display equations typeset
+# correctly, rather than by this suite, since a permanent headless-browser
+# test rig was judged disproportionate for this site.
 
 KATEX_PINNED_VERSION = "0.18.1"
 
@@ -248,10 +290,18 @@ def test_blog_has_currently_reading_header(site):
     on the page (e.g. leaking in from a post body). Checking heading markup
     and document order together rules out both a plain-text stand-in and a
     header accidentally placed below the `:::{#posts}:::` div.
+
+    The heading match is a regex over the `<h3 ...>Currently reading</h3>`
+    shape rather than the exact attribute string Quarto happens to emit
+    today (`class="anchored" data-anchor-id="currently-reading"`) — the
+    README explicitly invites local Quarto upgrades, and Pandoc's own
+    heading-anchor markup is exactly the kind of incidental detail that
+    changes across versions. What must hold is that it is an <h3>
+    containing this text, not the precise attribute set Pandoc bolts on.
     """
     html = read_html(site, "blog/index.html")
-    assert '<h3 class="anchored" data-anchor-id="currently-reading">Currently reading</h3>' in html, (
-        "'Currently reading' is not rendered as a heading"
+    assert re.search(r"<h3[^>]*>Currently reading</h3>", html), (
+        "'Currently reading' is not rendered as an <h3> heading"
     )
     header_pos = html.find("Currently reading")
     listing_pos = html.find('id="listing-posts"')
@@ -327,7 +377,7 @@ def test_note_stub_meta_description_tag_is_populated(site):
     rendered output that Quarto emits the tag in this exact form:
     <meta name="description" content="...">. Verified this discriminates: with
     the front-matter `description:` line removed, this test fails (no such
-    meta tag is rendered); restored, it passes. See task-7-report.md.
+    meta tag is rendered); restored, it passes.
     """
     html = read_html(site, NOTE)
     match = re.search(r'<meta name="description" content="([^"]*)">', html)
@@ -353,7 +403,7 @@ def test_pdf_is_copied_to_output(site):
     just dropped into notes/pdf/ before its stub page exists), so only an
     orphan file actually exercises that key. Verified: with `resources:`
     removed, this test fails (orphan-fixture.pdf is absent from _site);
-    restored, it passes. See task-7-report.md for the captured output.
+    restored, it passes.
     """
     orphan = site / "notes" / "pdf" / "orphan-fixture.pdf"
     assert orphan.is_file(), (
@@ -411,48 +461,39 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
 
 
 def test_cv_download_link_resolves_to_a_real_file(site):
-    """Follow each actual href to verify both the link and the file exist.
-
-    Extracts every PDF link from the CV page and validates that:
-    1. The page contains at least one PDF link.
-    2. Each link is resolvable as a local file (off-site links are skipped).
-    3. The resolved file actually exists in the built output.
-
-    Handles:
-    - Relative paths (e.g., "filename.pdf"): resolved against cv/
-    - Root-relative paths (e.g., "/path/to/file.pdf"): resolved against site root
-    - Off-site URLs (http://, https://, //): skipped (nothing local to verify)
+    """Follow the actual href to verify both the link and the file exist.
 
     A rename of the PDF and its link together (the expected workflow when
     swapping in a real CV) is caught by this test, not the two redundant
-    hard-coded tests that were removed.
+    hard-coded tests that were removed. Logic lives in
+    conftest.assert_local_links_resolve, shared with the notes-stub version
+    of this check below, since both page types make the same promise: a
+    same-origin .pdf href must resolve to a real file in the built output.
     """
-    html = read_html(site, "cv/index.html")
-    links = re.findall(r'href="([^"]*\.pdf)"', html)
-    assert links, "no PDF link found on the CV page"
+    assert_local_links_resolve(site, "cv/index.html")
 
-    off_site_pattern = re.compile(r"^(?:https?://|//)")
-    found_local_link = False
 
-    for href in links:
-        # Skip off-site links; there is nothing local to verify.
-        if off_site_pattern.match(href):
-            continue
+def test_all_notes_stub_pdf_links_resolve(site):
+    """Every generated notes stub must link to a PDF that actually exists.
 
-        found_local_link = True
-
-        # Resolve the href: root-relative paths go to site root,
-        # relative paths go to cv/ directory.
-        if href.startswith("/"):
-            target = (site / href.lstrip("/")).resolve()
-        else:
-            target = (site / "cv" / href).resolve()
-
-        assert target.is_file(), (
-            f"CV page links to {href}, which resolves to {target} — not found in built output"
-        )
-
-    assert found_local_link, "no local PDF links found (only off-site URLs)"
+    Globs every stub under notes/ (excluding the topic-index page notes/
+    index.html, which has no PDF of its own) rather than hard-coding
+    "notes/lattice-qcd/example-note.html" — the point is that a new stub
+    added in a new topic folder is covered the day it is added, with no
+    test to remember to write. A mutation test proved the gap this closes:
+    pointing example-note.md's PDF path at a nonexistent file left all
+    previously-existing tests passing (including test_note_stub_is_
+    generated, which only checks for the presence of a "Download PDF"
+    string and an <object> tag — never that either resolves) while the
+    download button and <object> viewer both 404 in the browser.
+    """
+    stubs = sorted(
+        p for p in site.glob("notes/**/*.html")
+        if p.relative_to(site) != Path("notes/index.html")
+    )
+    assert stubs, "no notes stub pages were generated"
+    for stub in stubs:
+        assert_local_links_resolve(site, str(stub.relative_to(site)))
 
 
 NOTEBOOK_POST = "blog/posts/2026-08-02-notebook-demo/index.html"
@@ -500,11 +541,6 @@ def test_freeze_cache_is_committed():
         "_freeze/ is tracked by git but none of the tracked paths look like "
         f"an execute-results/*.json cache: {tracked}"
     )
-
-
-def test_freeze_is_not_gitignored():
-    ignored = (REPO_ROOT / ".gitignore").read_text()
-    assert "_freeze" not in ignored, "_freeze/ must be committed, not ignored"
 
 
 def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
