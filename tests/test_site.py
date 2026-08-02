@@ -259,6 +259,30 @@ def test_blog_has_currently_reading_header(site):
         assert book in html, f"reading list is missing {book!r}"
 
 
+def test_listing_is_not_nested_inside_the_editable_header(site):
+    """The hand-edited header must be a SIBLING of the generated listing.
+
+    Pandoc wraps everything after a heading into that heading's <section>. If
+    the listing lands inside the "Currently reading" block, then adding any
+    further heading to the book list silently reparents the generated grid.
+    This page is hand-edited regularly, so that trap must stay closed.
+    """
+    html = read_html(site, "blog/index.html")
+    # Match by id, not class: the id="currently-reading" anchor comes from
+    # Pandoc's automatic heading slug and exists whether or not the fix
+    # (which adds a wrapping div carrying a "currently-reading" class) is in
+    # place. Keying on the class instead would make this test fail for the
+    # wrong reason if the fix regressed — "no such element" rather than
+    # actually showing the listing nested inside — so it would stop
+    # discriminating the defect it exists to catch.
+    header_block = extract_element(html, "currently-reading", by="id")
+    assert header_block, "no element with id 'currently-reading' found"
+    assert 'id="listing-posts"' not in header_block, (
+        "the generated listing is nested inside the editable header block; "
+        "adding a heading to the book list would silently reparent it"
+    )
+
+
 def test_display_math_delimiters_were_consumed_by_pandoc(site):
     """As above, for the $$...$$ display equation: Pandoc must recognise it
     and produce a <span class="math display"> node containing the raw LaTeX,
