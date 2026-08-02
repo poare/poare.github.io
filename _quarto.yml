@@ -9,4 +9,5 @@ website:
 
 format:
   html:
+    theme: theme.scss
     toc: false

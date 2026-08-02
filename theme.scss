@@ -1,0 +1,139 @@
+/*-- scss:defaults --*/
+
+// ---------------------------------------------------------------------------
+// Palette. Every colour used anywhere on the site is defined here and nowhere
+// else. Adding dark mode later means writing a second file that redefines
+// these five variables — nothing further down hard-codes a hex value.
+// ---------------------------------------------------------------------------
+$accent: #750014;   // MIT red
+$paper:  #FAF7F2;   // warm cream, deliberately not pure white
+$ink:    #211C16;   // near-black, deliberately not #000
+$muted:  #5C5148;   // secondary text
+$rule:   #E5DCD0;   // card borders and hairlines
+
+// Derived, never written as a literal — if $accent changes, this follows.
+$accent-faded: rgba($accent, 0.32);   // nav hover underline
+
+// Bootstrap variable overrides, all expressed in terms of the palette above.
+$body-bg:        $paper;
+$body-color:     $ink;
+$link-color:     $accent;
+$border-color:   $rule;
+$primary:        $accent;
+
+// Typography. 18px base: CMU has thin strokes drawn for print and reads
+// spindly at the usual 16px.
+$font-family-sans-serif: "CMU Serif", Georgia, "Times New Roman", serif;
+$font-family-monospace:  "CMU Typewriter", ui-monospace, Menlo, monospace;
+$font-size-root: 18px;
+$headings-font-weight: 400;
+
+/*-- scss:rules --*/
+
+// ---------------------------------------------------------------------------
+// Self-hosted Computer Modern. Visitors do not have these fonts installed, so
+// they ship with the site as subsetted WOFF2 (see scripts/subset_fonts.py).
+// font-display: swap shows fallback text immediately rather than blank space.
+// ---------------------------------------------------------------------------
+@font-face {
+  font-family: "CMU Serif";
+  src: url("assets/fonts/cmunrm.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("assets/fonts/cmunbx.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("assets/fonts/cmunti.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("assets/fonts/cmunbi.woff2") format("woff2");
+  font-weight: 700; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "CMU Sans";
+  src: url("assets/fonts/cmunss.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "CMU Typewriter";
+  src: url("assets/fonts/cmuntt.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+body {
+  background-color: $paper;
+  color: $ink;
+  -webkit-font-smoothing: antialiased;
+}
+
+// ---------------------------------------------------------------------------
+// Navigation. The active tab gets a real text underline sitting just below the
+// letterforms — not a bottom border on the navbar. 1px rather than CMU's own
+// 0.65px metric because 1px is exactly one CSS pixel and therefore renders
+// crisply and identically on every display.
+//
+// skip-ink is disabled as insurance: a 5px offset already clears the descender
+// of "g" (which drops 2.68px at 13px), but browsers measure descender depth
+// slightly differently.
+// ---------------------------------------------------------------------------
+.navbar {
+  background-color: $paper;
+  border-bottom: 1px solid $rule;
+}
+
+.navbar .navbar-brand {
+  color: $ink;
+  font-weight: 700;
+}
+
+.navbar .nav-link {
+  color: $muted;
+  text-decoration: none;
+}
+
+.navbar .nav-link:hover {
+  color: $ink;
+  text-decoration: underline;
+  text-decoration-color: $accent-faded;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  text-decoration-skip-ink: none;
+}
+
+.navbar .nav-link.active {
+  color: $accent;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  text-decoration-skip-ink: none;
+}
+
+// Small uppercase labels (dates, section eyebrows) use CMU Sans.
+.label-eyebrow {
+  font-family: "CMU Sans", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: $accent;
+}
+
+// Short accent rule used under page titles.
+.accent-rule {
+  height: 2px;
+  width: 42px;
+  background-color: $accent;
+  margin: 0 0 1rem;
+}
+
+// Listing cards.
+.quarto-grid-item {
+  border: 1px solid $rule;
+  border-radius: 10px;
+}
