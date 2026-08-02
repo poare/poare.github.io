@@ -4,6 +4,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from conftest import assert_local_links_resolve, extract_element, read_html, REPO_ROOT
 
 
@@ -727,3 +729,88 @@ def test_cname_is_copied_to_output(site):
         "a missing, empty, or wrong-domain CNAME silently detaches the "
         "custom domain on the next deploy"
     )
+
+
+def test_render_thumbnail_writes_a_png(tmp_path, monkeypatch):
+    """sync_notes.py renders one thumbnail at a time, so the per-file logic
+    has to be callable on its own rather than only via a directory scan.
+    """
+    import fitz
+
+    from scripts import make_thumbs
+
+    thumb_dir = tmp_path / "thumbs"
+    monkeypatch.setattr(make_thumbs, "THUMB_DIR", thumb_dir)
+
+    pdf_path = tmp_path / "sample-note.pdf"
+    doc = fitz.open()
+    doc.new_page(width=200, height=200)
+    doc.save(pdf_path)
+    doc.close()
+
+    written = make_thumbs.render_thumbnail(pdf_path)
+    assert written == thumb_dir / "sample-note.png"
+    assert written.is_file(), "render_thumbnail did not write the PNG"
+
+
+def test_render_thumbnail_skips_an_existing_thumbnail(tmp_path, monkeypatch):
+    """Re-running the sync over a manifest of 30 notes must not re-render
+    every thumbnail each time.
+    """
+    import fitz
+
+    from scripts import make_thumbs
+
+    thumb_dir = tmp_path / "thumbs"
+    thumb_dir.mkdir()
+    monkeypatch.setattr(make_thumbs, "THUMB_DIR", thumb_dir)
+
+    pdf_path = tmp_path / "sample-note.pdf"
+    doc = fitz.open()
+    doc.new_page(width=200, height=200)
+    doc.save(pdf_path)
+    doc.close()
+
+    existing = thumb_dir / "sample-note.png"
+    existing.write_bytes(b"sentinel")
+
+    assert make_thumbs.render_thumbnail(pdf_path) is None
+    assert existing.read_bytes() == b"sentinel", "an existing thumbnail was overwritten"
+    assert make_thumbs.render_thumbnail(pdf_path, force=True) is not None
+    assert existing.read_bytes() != b"sentinel", "--force did not re-render"
+
+
+def test_render_thumbnail_rejects_an_empty_pdf(tmp_path, monkeypatch):
+    """A zero-page PDF is a real thing PyMuPDF will hand back. Rendering
+    page 0 of it raises deep inside fitz; catching it here keeps the batch
+    loop's warn-and-continue behaviour meaningful.
+
+    The installed PyMuPDF (1.28.0) refuses to *save* an in-memory,
+    zero-page fitz.Document -- fitz.open() with no new_page() call, and a
+    page added then deleted, both raise "cannot save with zero pages" from
+    Document.save() itself, before render_thumbnail is ever reached. A
+    zero-page PDF is still a real file PyMuPDF will happily *open* (that is
+    the whole premise of this test), so the fixture is hand-crafted as raw
+    bytes -- the same technique conftest.py's _MINIMAL_PDF_BYTES uses, but
+    with an empty Kids array and Count 0 -- rather than produced via fitz.
+    """
+    from scripts import make_thumbs
+
+    monkeypatch.setattr(make_thumbs, "THUMB_DIR", tmp_path / "thumbs")
+
+    pdf_path = tmp_path / "empty-note.pdf"
+    pdf_path.write_bytes(
+        b"%PDF-1.4\n"
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\n"
+        b"xref\n"
+        b"0 3\n"
+        b"0000000000 65535 f\n"
+        b"trailer<</Size 3/Root 1 0 R>>\n"
+        b"startxref\n"
+        b"0\n"
+        b"%%EOF\n"
+    )
+
+    with pytest.raises(make_thumbs.EmptyPdfError):
+        make_thumbs.render_thumbnail(pdf_path)

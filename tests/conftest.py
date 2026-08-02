@@ -1,11 +1,18 @@
 import re
 import subprocess
+import sys
 from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Make the repo root importable so tests can `from scripts import ...`.
+# scripts/ holds local authoring tools; they are not a package on the path
+# by default, and pytest's rootdir insertion only covers tests/.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 ORPHAN_FIXTURE_PDF = REPO_ROOT / "notes" / "pdf" / "orphan-fixture.pdf"
 ORPHAN_FIXTURE_THUMB = REPO_ROOT / "notes" / "thumbs" / "orphan-fixture.png"

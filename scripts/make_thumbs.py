@@ -20,9 +20,36 @@ THUMB_DIR = REPO_ROOT / "notes" / "thumbs"
 ZOOM = 2.0
 
 
+class EmptyPdfError(ValueError):
+    """A PDF with zero pages — there is no page 1 to render."""
+
+
+def render_thumbnail(pdf_path, force=False):
+    """Render page 1 of `pdf_path` to THUMB_DIR/<stem>.png.
+
+    Returns the written Path, or None if the thumbnail already existed and
+    `force` is False. Raises EmptyPdfError for a zero-page PDF and lets
+    PyMuPDF's own exceptions propagate for unreadable ones — callers decide
+    whether one bad file should stop them. main() warns and continues;
+    sync_notes.py does the same.
+    """
+    THUMB_DIR.mkdir(parents=True, exist_ok=True)
+    target = THUMB_DIR / f"{pdf_path.stem}.png"
+    if target.exists() and not force:
+        return None
+
+    with fitz.open(pdf_path) as doc:
+        if doc.page_count == 0:
+            raise EmptyPdfError(f"{pdf_path.name} has no pages")
+        page = doc.load_page(0)
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM))
+        pixmap.save(target)
+
+    return target
+
+
 def main():
     force = "--force" in sys.argv
-    THUMB_DIR.mkdir(parents=True, exist_ok=True)
 
     pdfs = sorted(PDF_DIR.glob("*.pdf"))
     if not pdfs:
@@ -32,26 +59,22 @@ def main():
     failed = []
 
     for pdf_path in pdfs:
-        target = THUMB_DIR / f"{pdf_path.stem}.png"
-        if target.exists() and not force:
-            print(f"skip   {target.name}")
-            continue
-
         # A single encrypted/corrupt PDF must not abort the whole batch —
         # this runs over dozens of real files, and pdfs is sorted, so an
         # uncaught exception here would silently skip every file that
         # sorts after the bad one.
         try:
-            with fitz.open(pdf_path) as doc:
-                if doc.page_count == 0:
-                    print(f"WARN   {pdf_path.name} has no pages, skipping")
-                    continue
-                page = doc.load_page(0)
-                pixmap = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM))
-                pixmap.save(target)
+            target = render_thumbnail(pdf_path, force=force)
+        except EmptyPdfError as exc:
+            print(f"WARN   {exc}, skipping")
+            continue
         except Exception as exc:
             print(f"ERROR  {pdf_path.name}: {type(exc).__name__}: {exc}")
             failed.append(pdf_path.name)
+            continue
+
+        if target is None:
+            print(f"skip   {pdf_path.stem}.png")
             continue
 
         kb = target.stat().st_size / 1024
