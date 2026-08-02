@@ -297,3 +297,78 @@ def test_display_math_delimiters_were_consumed_by_pandoc(site):
     )
     assert "D_{\\text{defl}}" in html, "LaTeX source for the display equation is missing"
     assert "$$" not in html, "display-math delimiters survived unprocessed"
+
+
+NOTE = "notes/lattice-qcd/example-note.html"
+
+
+def test_note_stub_is_generated(site):
+    html = read_html(site, NOTE)
+    assert "Download PDF" in html, "stub is missing a download link"
+    assert "<object" in html or "<iframe" in html, "stub has no embedded viewer"
+
+
+def test_note_stub_has_indexable_description(site):
+    html = read_html(site, NOTE)
+    assert "condition number" in html.lower(), (
+        "the description text search engines rely on is missing"
+    )
+
+
+def test_notes_index_groups_by_topic(site):
+    html = read_html(site, "notes/index.html")
+    assert "Lattice QCD" in html, "topic heading is missing"
+    assert "An example note" in html, "note is missing from its topic listing"
+
+
+def test_pdf_is_copied_to_output(site):
+    pdfs = list((site / "notes" / "pdf").glob("*.pdf"))
+    assert pdfs, "no PDFs were copied into _site — check the resources config"
+
+
+def test_note_thumbnail_is_generated_and_referenced(site):
+    """The card grid's whole point is a visual thumbnail; without one the
+    cards are bare text. None of the brief's four required tests check this,
+    so it is checked here: both that scripts/make_thumbs.py actually wrote
+    the PNG to disk, and that the rendered listing's <img> references it. A
+    typo'd `image:` front-matter path would leave the PNG on disk but
+    missing from the page; a broken make_thumbs.py would leave nothing on
+    disk at all. Either failure mode is caught.
+    """
+    thumb = REPO_ROOT / "notes" / "thumbs" / "example-note.png"
+    assert thumb.is_file(), "make_thumbs.py did not produce example-note.png"
+
+    html = read_html(site, "notes/index.html")
+    listing = extract_element(html, "quarto-listing")
+    assert listing, "no element with class 'quarto-listing' rendered"
+    assert "thumbs/example-note.png" in listing, (
+        "the listing card does not reference the generated thumbnail"
+    )
+
+
+def test_notes_topic_listing_scoped_to_its_own_section(site):
+    """The 'Lattice QCD' listing must render as a child of its own heading's
+    <section> — and the intro prose above the heading must NOT be swallowed
+    into that same section. notes/index.md has the same shape that bit the
+    blog page in an earlier task (prose, then a heading, then a generated
+    listing div): Pandoc wraps everything after a heading into that
+    heading's <section> until a heading of equal-or-higher level closes it.
+    This page is designed to grow to many topics, each its own '## Heading'
+    followed by its own listing div, so a section that fails to close would
+    silently swallow every topic added after it.
+
+    extract_element also raises directly if the id="lattice-qcd" element's
+    markup never closes at all (unbalanced depth), which would itself mean
+    the section swallowed the rest of the document.
+    """
+    html = read_html(site, "notes/index.html")
+    section = extract_element(html, "lattice-qcd", by="id")
+    assert section, "no element with id 'lattice-qcd' found"
+    assert 'id="listing-lattice-qcd"' in section, (
+        "the topic listing is not nested inside its own topic's <section>"
+    )
+    assert "Write-ups, derivations" not in section, (
+        "the intro prose leaked into the topic section — the heading's "
+        "<section> did not close where expected, which would reparent any "
+        "topic added after this one"
+    )
