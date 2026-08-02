@@ -571,28 +571,42 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
 
     out_dir = tmp_path / "shim-render-out"
 
-    result = subprocess.run(
-        [quarto_bin, "render", "--output-dir", str(out_dir)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-    assert result.returncode == 0, (
-        "quarto render failed with a shimmed Python on PATH -- the freeze "
-        f"cache was not reused:\n{result.stdout}\n{result.stderr}"
-    )
-    assert marker not in result.stdout and marker not in result.stderr, (
-        "quarto invoked a python3/python/jupyter shim -- it re-executed the "
-        f"notebook instead of reusing the freeze cache:\n"
-        f"{result.stdout}\n{result.stderr}"
-    )
+    # --output-dir redirects quarto's final HTML output, but NOT its
+    # freeze-thaw staging step: when a render actually re-executes a
+    # notebook (the failure mode this test exists to catch), quarto writes
+    # execute-results/figure staging files into an `index_files/` directory
+    # next to the source .qmd, regardless of --output-dir. That directory
+    # is untracked and not gitignored, and its name is confusingly similar
+    # to the legitimate, committed `_freeze/.../index/` cache -- so on the
+    # one run where this test's failure signal fires for real, it would
+    # otherwise also leave debris in the source tree. Clean it up
+    # unconditionally, whether the render/assertions below pass or fail.
+    staging_dir = REPO_ROOT / "blog/posts/2026-08-02-notebook-demo/index_files"
+    try:
+        result = subprocess.run(
+            [quarto_bin, "render", "--output-dir", str(out_dir)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        assert result.returncode == 0, (
+            "quarto render failed with a shimmed Python on PATH -- the freeze "
+            f"cache was not reused:\n{result.stdout}\n{result.stderr}"
+        )
+        assert marker not in result.stdout and marker not in result.stderr, (
+            "quarto invoked a python3/python/jupyter shim -- it re-executed the "
+            f"notebook instead of reusing the freeze cache:\n"
+            f"{result.stdout}\n{result.stderr}"
+        )
 
-    rendered = out_dir / NOTEBOOK_POST
-    assert rendered.is_file(), (
-        f"expected rendered notebook page at {rendered}, not found"
-    )
-    html = rendered.read_text(encoding="utf-8")
-    assert "<img" in html or "data:image/png" in html, (
-        "figure missing after a Python-free render"
-    )
+        rendered = out_dir / NOTEBOOK_POST
+        assert rendered.is_file(), (
+            f"expected rendered notebook page at {rendered}, not found"
+        )
+        html = rendered.read_text(encoding="utf-8")
+        assert "<img" in html or "data:image/png" in html, (
+            "figure missing after a Python-free render"
+        )
+    finally:
+        shutil.rmtree(staging_dir, ignore_errors=True)

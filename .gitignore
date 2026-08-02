@@ -9,4 +9,10 @@ __pycache__/
 .DS_Store
 **/*.quarto_ipynb
 
+# Quarto's freeze-thaw staging output, written next to source .qmd files
+# on a re-execution (not redirected by --output-dir). Kept narrowly scoped
+# to the posts tree so it can never shadow the committed freeze cache
+# directory at the repo root.
+blog/posts/**/index_files/
+
 /.quarto/
