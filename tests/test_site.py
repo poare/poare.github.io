@@ -1,3 +1,5 @@
+import re
+
 from conftest import read_html, REPO_ROOT
 
 
@@ -70,9 +72,22 @@ def test_colours_are_variables_not_literals():
     """
     scss = (REPO_ROOT / "theme.scss").read_text()
     rules_section = scss.split("/*-- scss:rules --*/")[1]
-    offenders = [
-        line for line in rules_section.splitlines()
-        if not line.strip().startswith("//")
-        and ("rgb" in line or "#" in line.split("//")[0])
-    ]
+
+    # Each pattern looks for a colour in *property-value* position (after a
+    # colon), so an id selector like `#quarto-content` is not a false positive.
+    hex_literal = re.compile(r":[^;]*#[0-9a-fA-F]{3,8}\b")
+    colour_func = re.compile(r":[^;]*\b(?:rgb|rgba|hsl|hsla)\(")
+    colour_word = re.compile(
+        r":\s*(?:red|blue|green|black|white|gray|grey|orange|purple|yellow"
+        r"|pink|brown|navy|teal|olive|maroon|silver|aqua|fuchsia|lime)\b"
+    )
+
+    offenders = []
+    for line in rules_section.splitlines():
+        code = line.split("//")[0]          # strip trailing comments
+        if not code.strip():
+            continue
+        if hex_literal.search(code) or colour_func.search(code) or colour_word.search(code):
+            offenders.append(line.strip())
+
     assert offenders == [], f"hard-coded colours found in rules: {offenders}"
