@@ -496,6 +496,61 @@ def test_all_notes_stub_pdf_links_resolve(site):
         assert_local_links_resolve(site, str(stub.relative_to(site)))
 
 
+def test_no_stub_hand_copies_the_viewer_markup():
+    """Every notes stub must get its viewer from the pdf-note shortcode.
+
+    The shortcode exists so that changing how PDFs are presented is a
+    one-file edit rather than a 20-30 file edit. That property only holds
+    while no stub has quietly reverted to pasting the markup in directly —
+    which is exactly what someone does when they copy an older note as a
+    starting point. Checks source .md files, not rendered HTML: the
+    rendered page is *supposed* to contain <object>.
+    """
+    notes_dir = REPO_ROOT / "notes"
+    stubs = sorted(
+        p for p in notes_dir.glob("*/*.md")
+        if not p.name.startswith("_")
+    )
+    assert stubs, "no notes stubs found under notes/<topic>/"
+    for stub in stubs:
+        text = stub.read_text(encoding="utf-8")
+        assert "<object" not in text, (
+            f"{stub.relative_to(REPO_ROOT)} hand-copies the <object> viewer "
+            "instead of calling {{< pdf-note >}}"
+        )
+        assert "{{< pdf-note" in text, (
+            f"{stub.relative_to(REPO_ROOT)} does not call the pdf-note "
+            "shortcode"
+        )
+
+
+def test_note_page_renders_the_shortcode_output(site):
+    """The shortcode must emit all of its parts, pointing at THIS note's PDF.
+
+    The slug is derived, not typed, so the failure to guard against is a
+    page that renders perfectly while referencing another note's PDF —
+    which test_all_notes_stub_pdf_links_resolve would happily pass, since
+    that file does exist. Deriving the expected slug from the page path is
+    what makes this test check identity rather than mere existence.
+
+    Body prose from the front-matter `description` is covered by
+    test_note_stub_has_indexable_description just above.
+    """
+    html = read_html(site, NOTE)
+    slug = Path(NOTE).stem
+
+    assert extract_element(html, "accent-rule"), (
+        "the shortcode did not emit the accent rule"
+    )
+    assert f'href="../pdf/{slug}.pdf"' in html, (
+        f"no download button pointing at ../pdf/{slug}.pdf — the shortcode "
+        "derived the wrong slug, or emitted no button"
+    )
+    assert f'data="../pdf/{slug}.pdf"' in html, (
+        f"no <object> viewer pointing at ../pdf/{slug}.pdf"
+    )
+
+
 NOTEBOOK_POST = "blog/posts/2026-08-02-notebook-demo/index.html"
 
 
