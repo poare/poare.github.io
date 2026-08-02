@@ -1,6 +1,6 @@
 import re
 
-from conftest import read_html, REPO_ROOT
+from conftest import extract_element, read_html, REPO_ROOT
 
 
 def test_homepage_is_generated(site):
@@ -97,9 +97,11 @@ TABS = ["About", "CV", "Notes", "Blog"]
 
 
 def test_all_tabs_present_in_navbar(site):
-    html = read_html(site, "index.html")
+    """All four tabs appear *inside the navbar* — not merely somewhere on the page."""
+    navbar = extract_element(read_html(site, "index.html"), "navbar")
+    assert navbar, "no element with class 'navbar' found on index.html"
     for tab in TABS:
-        assert f">{tab}<" in html, f"navbar is missing the {tab} tab"
+        assert f">{tab}<" in navbar, f"navbar is missing the {tab} tab"
 
 
 def test_tab_pages_are_generated(site):
@@ -117,19 +119,19 @@ def test_full_text_search_is_enabled(site):
 def test_active_nav_link_markup_matches_theme_selector(site):
     """Prove the theme's underline selector matches real rendered markup.
 
-    Task 3 styles `.navbar .nav-link.active`, but its test could only grep the
-    compiled CSS text — which proves the rule was authored, not that it matches
-    anything. Now that real nav items exist, assert an element actually carries
-    both classes. Without this, the underline could be entirely non-functional
-    and every other test would still pass.
+    theme.scss styles `.navbar .nav-link.active` — a descendant combinator.
+    Asserting the classes co-occur somewhere in the document would not
+    establish that; the element must be inside the navbar. Without this, the
+    underline could be entirely non-functional and every other test would
+    still pass.
     """
-    html = read_html(site, "about.html")
+    navbar = extract_element(read_html(site, "about.html"), "navbar")
+    assert navbar, "no element with class 'navbar' found on about.html"
     both_classes = re.compile(
         r'class="[^"]*(?:\bnav-link\b[^"]*\bactive\b|\bactive\b[^"]*\bnav-link\b)[^"]*"'
     )
-    assert both_classes.search(html), (
-        "no element carries both 'nav-link' and 'active' classes on about.html — "
+    assert both_classes.search(navbar), (
+        "no element inside the navbar carries both 'nav-link' and 'active' — "
         "the theme's underline selector does not match Quarto's markup. "
-        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/about.html "
-        "and correct the selector in theme.scss."
+        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/about.html"
     )
