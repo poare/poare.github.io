@@ -1,10 +1,10 @@
 {
-  "hash": "5c57be7053258abbb2337927612498f9",
+  "hash": "841520afe5a0e7cb62b5475e5011f9da",
   "result": {
     "engine": "jupyter",
-    "markdown": "---\ntitle: \"Convergence of a Krylov solver\"\ndate: 2026-08-02\ncategories: [solvers, python]\n---\n\nA quick demonstration that executable code works on this site. The residual of\na Krylov method typically falls geometrically until it stagnates.\n\n::: {#cell-fig-residual .cell execution_count=1}\n``` {.python .cell-code}\nimport matplotlib.pyplot as plt\nimport numpy as np\n\niterations = np.arange(0, 60)\nresidual = np.exp(-0.12 * iterations) + 1e-9\n\nfig, ax = plt.subplots(figsize=(5.5, 3.4))\nax.semilogy(iterations, residual, color=\"#750014\", linewidth=1.6)\nax.set_xlabel(\"iteration\")\nax.set_ylabel(r\"$\\|r_k\\| / \\|r_0\\|$\")\nax.grid(True, which=\"both\", alpha=0.25)\nfig.tight_layout()\nplt.show()\n```\n\n::: {.cell-output .cell-output-display}\n![Residual norm against iteration count.](index_files/figure-html/fig-residual-output-1.png){#fig-residual width=515 height=315}\n:::\n:::\n\n\nThe figure above was generated when this page was rendered, not pasted in.\n\n",
+    "markdown": "---\ntitle: \"Convergence of a Krylov solver\"\ndate: 2026-08-02\ncategories: [solvers, python]\n---\n\nA quick demonstration that executable code works on this site. The residual of\na Krylov method typically falls geometrically until it stagnates.\n\n::: {#cell-fig-residual .cell execution_count=1}\n``` {.python .cell-code}\nimport matplotlib.pyplot as plt\nimport numpy as np\n\niterations = np.arange(0, 60)\nresidual = np.exp(-0.12 * iterations) + 1e-9\n\nfig, ax = plt.subplots(figsize=(5.5, 3.4))\n# \"#750014\" duplicates the $accent colour defined in theme.scss — matplotlib\n# can't read SCSS variables, so if the site accent colour ever changes,\n# update this literal to match.\nax.semilogy(iterations, residual, color=\"#750014\", linewidth=1.6)\nax.set_xlabel(\"iteration\")\nax.set_ylabel(r\"$\\|r_k\\| / \\|r_0\\|$\")\nax.grid(True, which=\"both\", alpha=0.25)\nfig.tight_layout()\nplt.show()\n```\n\n::: {.cell-output .cell-output-display}\n![Residual norm against iteration count.](index_files/figure-html/fig-residual-output-1.png){#fig-residual width=517 height=317}\n:::\n:::\n\n\nThe figure above was generated when this page was rendered, not pasted in.\n\n",
     "supporting": [
-      "index_files"
+      "index_files/figure-html"
     ],
     "filters": [],
     "includes": {}

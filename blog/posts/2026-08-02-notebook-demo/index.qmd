@@ -19,6 +19,9 @@ iterations = np.arange(0, 60)
 residual = np.exp(-0.12 * iterations) + 1e-9
 
 fig, ax = plt.subplots(figsize=(5.5, 3.4))
+# "#750014" duplicates the $accent colour defined in theme.scss — matplotlib
+# can't read SCSS variables, so if the site accent colour ever changes,
+# update this literal to match.
 ax.semilogy(iterations, residual, color="#750014", linewidth=1.6)
 ax.set_xlabel("iteration")
 ax.set_ylabel(r"$\|r_k\| / \|r_0\|$")
