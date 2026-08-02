@@ -21,3 +21,6 @@ format:
   html:
     theme: theme.scss
     toc: false
+    html-math-method:
+      method: katex
+      url: "https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/"

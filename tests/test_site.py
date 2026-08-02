@@ -135,3 +135,73 @@ def test_active_nav_link_markup_matches_theme_selector(site):
         "the theme's underline selector does not match Quarto's markup. "
         "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/about.html"
     )
+
+
+POST = "blog/posts/2026-08-01-hello/index.html"
+
+# Quarto/Pandoc's "katex" html-math-method renders client-side: the maths is
+# actually typeset by KaTeX's JavaScript running in the reader's browser on
+# page load, not by Quarto at build time. Confirmed against Quarto's own
+# maintainers (github.com/quarto-dev/quarto-cli discussions #5227 and
+# #10604): there is no built-in build-time/static KaTeX rendering. That means
+# the static files under _site/ that these tests read can never contain
+# class="katex" or class="katex-display" — those only exist in the live DOM
+# after JavaScript has run. The tests below assert only what the static
+# output can actually establish: that the KaTeX library is wired up and
+# pinned to a fixed version, and that Pandoc recognised and consumed the
+# $...$ / $$...$$ delimiters into maths nodes for KaTeX to target. Real
+# rendering was verified by hand in a browser (see task-5-report.md) rather
+# than by this suite, since a permanent headless-browser test rig was judged
+# disproportionate for this site.
+
+KATEX_PINNED_VERSION = "0.18.1"
+
+
+def test_katex_assets_are_loaded_and_pinned(site):
+    """KaTeX renders client-side, so the static HTML cannot show rendered
+    maths. What it can show is that the library is wired up and pinned to a
+    fixed version rather than tracking @latest, which would let an upstream
+    KaTeX release silently break every equation on the site.
+    """
+    html = read_html(site, POST)
+    assert "katex.min.js" in html, "KaTeX script tag missing"
+    assert f"katex@{KATEX_PINNED_VERSION}" in html, "KaTeX version is not pinned"
+    assert "katex@latest" not in html, "KaTeX must not track @latest"
+
+
+def test_inline_math_delimiters_were_consumed_by_pandoc(site):
+    """Pandoc must parse inline `$...$` into a maths node at build time,
+    leaving the raw LaTeX source inside a <span class="math inline"> for
+    KaTeX to typeset client-side. Literal "$...$" text surviving into the
+    prose means the maths was never recognised as maths at all.
+
+    Verified this discriminates: re-running the post's source through pandoc
+    with the tex_math_dollars extension disabled (simulating a markdown
+    parser regression) reproduces exactly this failure mode — bare "$D$"
+    survives as literal text instead of becoming <span class="math
+    inline">D</span>, and the more complex \\kappa(D) expression is silently
+    mangled rather than preserved for KaTeX.
+    """
+    html = read_html(site, POST)
+    assert '<span class="math inline">D</span>' in html, (
+        "the bare $D$ was not parsed into a maths span"
+    )
+    assert "\\kappa(D)" in html, "LaTeX source missing — nothing for KaTeX to render"
+    assert "$D$" not in html, "delimiters survived around D; maths was not parsed"
+    assert "$\\kappa(D)$" not in html, "delimiters survived; maths was not parsed"
+
+
+def test_display_math_delimiters_were_consumed_by_pandoc(site):
+    """As above, for the $$...$$ display equation: Pandoc must recognise it
+    and produce a <span class="math display"> node containing the raw LaTeX,
+    which is exactly what the injected client-side render script (see
+    test_katex_assets_are_loaded_and_pinned) looks for via
+    `classList.contains('display')` to decide whether to call KaTeX in
+    display mode.
+    """
+    html = read_html(site, POST)
+    assert 'class="math display"' in html, (
+        "display equation was not parsed into a maths node"
+    )
+    assert "D_{\\text{defl}}" in html, "LaTeX source for the display equation is missing"
+    assert "$$" not in html, "display-math delimiters survived unprocessed"
