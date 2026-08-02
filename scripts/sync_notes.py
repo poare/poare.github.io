@@ -107,6 +107,31 @@ def load_manifest(path):
             raise ManifestError(f"{where}: duplicate slug {slug!r}")
         seen.add(slug)
 
+        # An absolute source silently defeats NOTES_ROOT: Path(root) / "/abs"
+        # discards `root` entirely and evaluates to the absolute path as-is,
+        # so this would work on the author's machine, pass every other
+        # check, and commit a machine-specific path straight into the
+        # public manifest -- exactly what NOTES_ROOT exists to prevent, and
+        # unfixable after the fact once it's in git history.
+        source = entry["source"]
+        if isinstance(source, str) and Path(source).is_absolute():
+            raise ManifestError(
+                f"{where}: source {source!r} must be relative to NOTES_ROOT, "
+                "not an absolute path"
+            )
+
+        # topic is interpolated straight into a filesystem path
+        # (REPO_ROOT / "notes" / topic / f"{slug}.md") and into a Quarto
+        # category verbatim. slug gets the kebab-case check above; topic
+        # must get the same one, or a value like "../../foo" writes a stub
+        # outside the notes tree entirely.
+        topic = entry["topic"]
+        if not isinstance(topic, str) or not SLUG_RE.match(topic):
+            raise ManifestError(
+                f"{where}: topic {topic!r} is not kebab-case "
+                "(lowercase letters, digits and single hyphens)"
+            )
+
         entries.append(entry)
 
     return entries

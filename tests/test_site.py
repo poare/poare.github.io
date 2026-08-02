@@ -881,6 +881,16 @@ def test_manifest_rejects_a_bad_entry(tmp_path):
             )
         )
 
+    with pytest.raises(sync_notes.ManifestError, match="absolute"):
+        sync_notes.load_manifest(
+            write("- slug: a-note\n  source: /Users/someone/x.pdf\n  topic: physics\n")
+        )
+
+    with pytest.raises(sync_notes.ManifestError, match="kebab-case"):
+        sync_notes.load_manifest(
+            write("- slug: a-note\n  source: x.pdf\n  topic: Not_Kebab\n")
+        )
+
 
 def test_sync_never_overwrites_an_existing_stub(tmp_path):
     """The property the whole design rests on. A stub holds hand-written
@@ -903,6 +913,54 @@ def test_sync_never_overwrites_an_existing_stub(tmp_path):
     assert sync_notes.scaffold_stub(stub, "lorentz-poincare-groups", "physics") is False
     assert stub.read_text(encoding="utf-8") == hand_written, (
         "scaffold_stub overwrote an existing stub and destroyed hand-written prose"
+    )
+
+
+def test_sync_entry_never_overwrites_an_existing_stub(tmp_path, monkeypatch):
+    """test_sync_never_overwrites_an_existing_stub (above) proves scaffold_stub's
+    own guard works, but scaffold_stub is a private helper and sync_entry is
+    its only real caller. A mutation that inlines the write directly into
+    sync_entry -- bypassing the guard entirely -- left that test, and the
+    whole rest of the suite, green: nothing previously drove the
+    never-overwrite property through sync_entry itself. This does, using a
+    small real PDF under a temporary NOTES_ROOT, with the module's own path
+    constants monkeypatched to tmp_path so nothing touches the real
+    notes/pdf/ or notes/<topic>/ trees (and nothing is left behind after the
+    test).
+    """
+    import fitz
+
+    from scripts import make_thumbs, sync_notes
+
+    repo_root = tmp_path / "repo"
+    (repo_root / "notes").mkdir(parents=True)
+    monkeypatch.setattr(sync_notes, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(sync_notes, "PDF_DIR", repo_root / "notes" / "pdf")
+    monkeypatch.setattr(make_thumbs, "THUMB_DIR", repo_root / "notes" / "thumbs")
+
+    notes_root = tmp_path / "notes-root"
+    notes_root.mkdir()
+    source = notes_root / "note.pdf"
+    doc = fitz.open()
+    doc.new_page(width=200, height=200)
+    doc.save(source)
+    doc.close()
+
+    entry = {"slug": "test-note", "source": "note.pdf", "topic": "physics"}
+
+    sync_notes.sync_entry(entry, notes_root)
+
+    stub_path = repo_root / "notes" / "physics" / "test-note.md"
+    assert stub_path.is_file(), "sync_entry did not scaffold a stub"
+    scaffolded = stub_path.read_text(encoding="utf-8")
+
+    hand_written = scaffolded + "\n\nSupersedes the 2024 version.\n"
+    stub_path.write_text(hand_written, encoding="utf-8")
+
+    sync_notes.sync_entry(entry, notes_root)
+
+    assert stub_path.read_text(encoding="utf-8") == hand_written, (
+        "sync_entry overwrote an existing stub and destroyed hand-written prose"
     )
 
 
