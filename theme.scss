@@ -132,6 +132,15 @@ body {
   margin: 0 0 1rem;
 }
 
+// Quarto's listing JavaScript injects an empty grey block on any card that has
+// no image, so a card without a thumbnail reserves dead space instead of just
+// being shorter. Hide it: posts with a figure still show it, posts without get
+// a clean text card. (Notes cards always have a real thumbnail generated from
+// the PDF's first page, so this never fires there.)
+.listing-item-img-placeholder {
+  display: none;
+}
+
 // Listing cards.
 .quarto-grid-item {
   border: 1px solid $rule;

@@ -6,11 +6,10 @@ listing:
   type: grid
   sort: "date desc"
   categories: true
-  # No `image` field: posts rarely have a natural thumbnail, and requesting one
-  # makes Quarto reserve an empty grey block on every card that lacks it. The
-  # Notes listing DOES request images, because those get real thumbnails
-  # generated from each PDF's first page (scripts/make_thumbs.py).
-  fields: [date, title, categories, description]
+  # Posts that have an image (e.g. a figure from an executed notebook) show it.
+  # Posts without one get a text-only card: theme.scss hides Quarto's empty
+  # grey `.listing-item-img-placeholder` rather than reserving dead space.
+  fields: [image, date, title, categories, description]
   feed: false
 ---
 
