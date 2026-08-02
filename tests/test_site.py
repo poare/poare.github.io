@@ -415,3 +415,21 @@ def test_cv_pdf_is_copied_to_output(site):
     assert (site / "cv" / "patrick-oare-cv.pdf").is_file(), (
         "the CV PDF was not copied into _site"
     )
+
+
+def test_cv_download_link_resolves_to_a_real_file(site):
+    """Follow the actual href rather than trusting a hard-coded filename.
+
+    The other two CV tests each hard-code "patrick-oare-cv.pdf" independently,
+    so they would both still pass if the link and the copied file diverged.
+    The user will swap this placeholder for their real CV, which is exactly
+    when that divergence happens.
+    """
+    html = read_html(site, "cv/index.html")
+    links = re.findall(r'href="([^"]*\.pdf)"', html)
+    assert links, "no PDF link found on the CV page"
+    for href in links:
+        target = (site / "cv" / href).resolve()
+        assert target.is_file(), (
+            f"CV page links to {href}, which is not present in the built output"
+        )
