@@ -72,6 +72,17 @@ Run: `quarto render notes/lattice-qcd/example-note.md --to html && grep -o 'PROB
 
 Expected: a line like `PROBE input_file=/Users/patrickoare/website/notes/lattice-qcd/example-note.md`.
 
+> **RESOLVED 2026-08-02 — do not re-run this spike.** Quarto 1.10.18 returned
+> `PROBE input_file=/Users/patrickoare/website/notes/lattice-qcd/example-note.md`.
+> `quarto.doc.input_file` **is** available inside a shortcode and gives the
+> absolute path to the source file. The bare `{{< pdf-note >}}` form is
+> therefore the one to build; the fallback below does **not** apply. Steps 1
+> and 2 of this task are already done and committed to the working tree:
+> `_extensions/pdf-note/_extension.yml` exists in final form, and
+> `notes/lattice-qcd/example-note.md` already has the one-line body. Only
+> `_extensions/pdf-note/pdf-note.lua` still holds the throwaway probe body and
+> must be replaced by Step 3.
+
 **If instead you get an empty result, a Lua error, or the literal text `nil`:** `quarto.doc.input_file` is unavailable in shortcodes at this Quarto version. Take the documented fallback — the shortcode requires an explicit slug argument, `{{< pdf-note example-note >}}` — and in every later step of this plan replace bare `{{< pdf-note >}}` with the slug-argument form. Record which branch you took in the commit message. Everything else in the plan is unaffected.
 
 - [ ] **Step 3: Write the real shortcode**
