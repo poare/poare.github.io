@@ -47,8 +47,9 @@ Install the Quarto CLI first — `quarto preview` and `quarto render` need it.
 Match the version pinned in `.github/workflows/publish.yml` (currently 1.10.18):
 
 - **macOS** — download the `.pkg` for that version from
-  <https://github.com/quarto-dev/quarto-cli/releases> and install it, or
-  `brew install quarto` for the latest release.
+  <https://github.com/quarto-dev/quarto-cli/releases> and install it.
+  (`brew install quarto` installs whatever is newest, which will usually *not*
+  match the pin — use the `.pkg` if you want the versions to agree.)
 - **Ubuntu** — download the matching `.deb` from the same releases page and
   install with `sudo dpkg -i quarto-*.deb`.
 
