@@ -148,8 +148,7 @@ top of it:
 
 | Test | Failure it catches |
 |---|---|
-| Rendered note page contains the button href, `<object>` data attribute, accent rule and description prose | Shortcode silently expanding to nothing |
-| Page for a given slug references that slug's PDF | Slug derivation resolving to the wrong file |
+| Rendered note page contains the accent rule, and a button href and `<object>` data attribute pointing at *that page's own* slug | Shortcode expanding to nothing, or deriving another note's slug — which a mere link-resolution check would pass, since the other file exists |
 | Every manifest slug has a committed PDF, thumbnail and stub | Manifest entry added, sync never run |
 | Every manifest slug matches `^[a-z0-9]+(-[a-z0-9]+)*$` | snake_case or capitals reaching a public URL |
 | No stub contains a literal `<object` | Quiet regression to hand-copied boilerplate |
