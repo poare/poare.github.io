@@ -406,30 +406,46 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
     )
 
 
-def test_cv_page_has_download_link(site):
-    html = read_html(site, "cv/index.html")
-    assert "patrick-oare-cv.pdf" in html, "CV download link is missing"
-
-
-def test_cv_pdf_is_copied_to_output(site):
-    assert (site / "cv" / "patrick-oare-cv.pdf").is_file(), (
-        "the CV PDF was not copied into _site"
-    )
-
-
 def test_cv_download_link_resolves_to_a_real_file(site):
-    """Follow the actual href rather than trusting a hard-coded filename.
+    """Follow each actual href to verify both the link and the file exist.
 
-    The other two CV tests each hard-code "patrick-oare-cv.pdf" independently,
-    so they would both still pass if the link and the copied file diverged.
-    The user will swap this placeholder for their real CV, which is exactly
-    when that divergence happens.
+    Extracts every PDF link from the CV page and validates that:
+    1. The page contains at least one PDF link.
+    2. Each link is resolvable as a local file (off-site links are skipped).
+    3. The resolved file actually exists in the built output.
+
+    Handles:
+    - Relative paths (e.g., "filename.pdf"): resolved against cv/
+    - Root-relative paths (e.g., "/path/to/file.pdf"): resolved against site root
+    - Off-site URLs (http://, https://, //): skipped (nothing local to verify)
+
+    A rename of the PDF and its link together (the expected workflow when
+    swapping in a real CV) is caught by this test, not the two redundant
+    hard-coded tests that were removed.
     """
     html = read_html(site, "cv/index.html")
     links = re.findall(r'href="([^"]*\.pdf)"', html)
     assert links, "no PDF link found on the CV page"
+
+    off_site_pattern = re.compile(r"^(?:https?://|//)")
+    found_local_link = False
+
     for href in links:
-        target = (site / "cv" / href).resolve()
+        # Skip off-site links; there is nothing local to verify.
+        if off_site_pattern.match(href):
+            continue
+
+        found_local_link = True
+
+        # Resolve the href: root-relative paths go to site root,
+        # relative paths go to cv/ directory.
+        if href.startswith("/"):
+            target = (site / href.lstrip("/")).resolve()
+        else:
+            target = (site / "cv" / href).resolve()
+
         assert target.is_file(), (
-            f"CV page links to {href}, which is not present in the built output"
+            f"CV page links to {href}, which resolves to {target} — not found in built output"
         )
+
+    assert found_local_link, "no local PDF links found (only off-site URLs)"
