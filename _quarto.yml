@@ -4,8 +4,18 @@ project:
 
 website:
   title: "Patrick Oare"
+  site-url: "https://www.patrickoare.phd"
+  search: true
   navbar:
-    left: []
+    left:
+      - text: "About"
+        href: about.md
+      - text: "CV"
+        href: cv/index.md
+      - text: "Notes"
+        href: notes/index.md
+      - text: "Blog"
+        href: blog/index.md
 
 format:
   html:
