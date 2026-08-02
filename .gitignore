@@ -1,7 +1,7 @@
 .superpowers/
 
 _site/
-.quarto/
+/.quarto/
 .venv/
 __pycache__/
 .pytest_cache/
