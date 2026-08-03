@@ -10,7 +10,32 @@ Usage:  python scripts/make_thumbs.py [--force]
 import sys
 from pathlib import Path
 
-import fitz  # PyMuPDF
+# PyMuPDF ships two module names for itself: the modern `pymupdf` and the
+# legacy `fitz`. Prefer `pymupdf` -- an UNRELATED package squats the name
+# `fitz` on PyPI, so `pip install fitz` succeeds and then fails at import
+# with a Starlette error about a missing 'static/' directory, which points
+# nowhere near PDFs. The hasattr check catches the case where that squatter
+# is installed and importable.
+_PYMUPDF_HELP = (
+    "PyMuPDF is required but was not found.\n"
+    "\n"
+    "    pip install pymupdf\n"
+    "\n"
+    "Do NOT run `pip install fitz`. PyMuPDF's legacy module is named fitz,\n"
+    "but the name fitz on PyPI belongs to an unrelated package; installing\n"
+    "it shadows PyMuPDF and fails with a confusing error about 'static/'."
+)
+
+try:
+    import pymupdf as fitz  # PyMuPDF >= 1.24.3
+except ImportError:
+    try:
+        import fitz  # older PyMuPDF, which provides only this name
+    except Exception as exc:  # the squatter raises RuntimeError, not ImportError
+        raise SystemExit(_PYMUPDF_HELP) from exc
+
+if not hasattr(fitz, "Matrix"):
+    raise SystemExit(_PYMUPDF_HELP)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PDF_DIR = REPO_ROOT / "notes" / "pdf"

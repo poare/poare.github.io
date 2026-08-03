@@ -17,7 +17,26 @@ Usage:  python scripts/make_favicon.py
 import sys
 from pathlib import Path
 
-import fitz  # PyMuPDF
+# Prefer `pymupdf` over its legacy `fitz` alias: an unrelated PyPI package
+# squats the name fitz. See the longer note in scripts/make_thumbs.py.
+_PYMUPDF_HELP = (
+    "PyMuPDF is required but was not found.\n"
+    "\n"
+    "    pip install pymupdf\n"
+    "\n"
+    "Do NOT run `pip install fitz` — that is a different package entirely."
+)
+
+try:
+    import pymupdf as fitz  # PyMuPDF >= 1.24.3
+except ImportError:
+    try:
+        import fitz  # older PyMuPDF, which provides only this name
+    except Exception as exc:  # the squatter raises RuntimeError, not ImportError
+        raise SystemExit(_PYMUPDF_HELP) from exc
+
+if not hasattr(fitz, "Matrix"):
+    raise SystemExit(_PYMUPDF_HELP)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE = REPO_ROOT / "assets" / "lqcd_icon.pdf"

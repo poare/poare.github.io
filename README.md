@@ -163,6 +163,18 @@ Then set up the Python side:
     source .venv/bin/activate
     pip install -r requirements.txt
 
+**If you use conda or any other environment instead, install from
+`requirements.txt` there — and never `pip install fitz`.** The scripts import
+PyMuPDF, whose legacy module name is `fitz`, but the name `fitz` on PyPI
+belongs to an unrelated package. Installing it succeeds and then fails at
+import with `RuntimeError: Directory 'static/' does not exist`, which points
+nowhere near PDFs. The distribution you want is `pymupdf`; it ships both the
+`pymupdf` and `fitz` module names itself.
+
+The same gap between install name and import name applies to `pyyaml`, which
+you import as `yaml`. When a module is missing, check `requirements.txt` for
+the distribution that provides it rather than guessing from the module name.
+
 That's it — the subsetted WOFF2 fonts and the notebook `_freeze/` cache are
 already committed, so nothing further needs to run on a fresh checkout.
 `scripts/subset_fonts.py` is only for deliberately regenerating the fonts
