@@ -158,6 +158,61 @@ def test_tab_pages_are_generated(site):
         assert (site / relpath).is_file(), f"{relpath} was not generated"
 
 
+# Source file -> generated page, for the five top-level pages that must share
+# one layout. Kept together so a new tab is added to both halves at once.
+TOP_LEVEL_PAGES = {
+    "index.md": "index.html",
+    "about.md": "about.html",
+    "cv/index.md": "cv/index.html",
+    "notes/index.md": "notes/index.html",
+    "blog/index.md": "blog/index.html",
+}
+
+
+def test_every_top_level_page_declares_the_full_layout():
+    """All top-level pages use `page-layout: full` so their left gutters line up.
+
+    Without this, a heading jumps horizontally as you move between tabs —
+    the default article layout indents content roughly 240px at a 1280px
+    viewport, the full layout roughly 73px. The pages were mixed before
+    (Blog and the homepage on the default, the rest on full) and the
+    mismatch was visible when clicking between them.
+
+    Asserted on the front matter rather than the rendered output because
+    that is the single knob that controls it; the companion test below
+    checks the rendering actually followed.
+    """
+    for source in TOP_LEVEL_PAGES:
+        text = (REPO_ROOT / source).read_text(encoding="utf-8")
+        front_matter = text.split("---", 2)[1]
+        assert "page-layout: full" in front_matter, (
+            f"{source} does not declare `page-layout: full`, so its gutters "
+            "will not match the other top-level pages"
+        )
+
+
+def test_top_level_pages_render_in_the_full_width_column(site):
+    """The declared layout must actually reach the generated markup.
+
+    Quarto puts the content in a `column-page*` class for the full layout
+    and `column-body` for the default article layout. Blog legitimately
+    renders `column-page-left` rather than `column-page`: its category
+    filter occupies the right margin, so the content column is left-aligned
+    within the same page column. Both share the same left edge, which is
+    what this test is really about, so the assertion accepts the whole
+    `column-page` family rather than pinning one exact class.
+    """
+    for source, relpath in TOP_LEVEL_PAGES.items():
+        html = read_html(site, relpath)
+        match = re.search(r'<main class="([^"]*)"', html)
+        assert match, f"no <main> element found in {relpath}"
+        classes = match.group(1)
+        assert "column-page" in classes, (
+            f"{relpath} rendered <main class=\"{classes}\"> — expected a "
+            f"column-page* class. Check `page-layout: full` in {source}."
+        )
+
+
 def test_full_text_search_is_enabled(site):
     """Quarto's built-in search is included — it partly compensates for PDFs
     being poorly indexed by search engines."""

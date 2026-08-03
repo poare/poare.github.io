@@ -1,4 +1,8 @@
 ---
+# Full-width layout, so this page's left gutter matches every other tab.
+# See index.md for the rationale. The category filter still occupies the
+# right margin column here — the full layout preserves it.
+page-layout: full
 title: "Blog"
 listing:
   id: posts
