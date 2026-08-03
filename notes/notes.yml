@@ -11,3 +11,7 @@
 - slug: lorentz-poincare-groups
   source: physics/lorentz_poincare_groups/lorentz_poincare_groups.pdf
   topic: physics
+
+- slug: collider-physics
+  source: physics/collider_physics/collider_physics.pdf
+  topic: physics

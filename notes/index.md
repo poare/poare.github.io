@@ -15,9 +15,7 @@ listing:
 ::: {.accent-rule}
 :::
 
-Write-ups, derivations and lecture notes. Most are PDFs produced from LaTeX;
-each has a page here with a summary, so you can tell what a note contains
-before downloading it.
+Write-ups, derivations and lecture notes. Most are PDFs produced from LaTeX; each has a page here with a summary, so you can tell what a note contains before downloading it. 
 
 ## Physics
 

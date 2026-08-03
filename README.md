@@ -7,6 +7,7 @@ and deployed to GitHub Pages.
 
     quarto preview                  # live preview at localhost, reloads on save
     python -m pytest tests/ -v      # verify the built output
+    git add & commit ...            # add relevant files and commit
     git push                        # GitHub renders and republishes automatically
 
 Use `python -m pytest`, not bare `pytest`. The `-m` form runs the interpreter
