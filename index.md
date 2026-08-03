@@ -12,4 +12,4 @@ page-layout: full
 title: "Patrick Oare"
 ---
 
-Physicist working on iterative linear solvers for lattice QCD.
+Physicist working on iterative linear solvers for lattice QCD. TODO turn this into a research interests page with a description of each project + papers
