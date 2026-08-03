@@ -5,6 +5,12 @@ project:
     - notes/pdf/
     - cv/*.pdf
     - CNAME
+    # The footer links to both of these, and neither is a Quarto page, so
+    # they must be copied explicitly or the links 404. The OFL entry is also
+    # an obligation in its own right: the licence has to ship with the fonts,
+    # which are served to every visitor.
+    - LICENSE
+    - assets/fonts/OFL.txt
 
 website:
   title: "Patrick Oare"
@@ -27,6 +33,19 @@ website:
         href: blog/index.md
       - text: "Contact"
         href: contact.md
+  # A licence nobody can find protects nothing, so the terms go on every page.
+  # Unlike navbar hrefs, Quarto does NOT rewrite plain relative links inside
+  # page-footer markdown per page depth (verified: href="LICENSE" rendered
+  # identically, and thus wrongly, on both index.html and a nested notes
+  # page). Root-relative hrefs (leading "/") DO get rewritten on the way out
+  # -- the same trick already used for the favicon SVG link above -- so both
+  # links here are written root-relative to resolve from every depth.
+  page-footer:
+    center: |
+      &copy; 2026 Patrick Oare &middot;
+      prose and notes under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) &middot;
+      code under [MIT](/LICENSE) &middot;
+      typeset in Computer Modern Unicode ([OFL](/assets/fonts/OFL.txt))
 
 execute:
   freeze: auto

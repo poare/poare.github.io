@@ -1550,3 +1550,50 @@ def test_font_notice_credits_upstream():
     assert "subset" in notice.lower(), (
         "NOTICE does not record that these are subsetted, i.e. modified, copies"
     )
+
+
+def test_licence_footer_renders_on_every_page_depth(site):
+    """The footer must name the terms AND its links must resolve, at every depth.
+
+    Quarto does NOT rewrite plain relative hrefs inside page-footer markdown:
+    written as `[MIT](LICENSE)`, the href renders byte-identically on the
+    homepage and on a page two directories down, so it 404s everywhere but
+    the root. Root-relative hrefs (leading "/") *are* rewritten on the way
+    out, which is why _quarto.yml writes them that way.
+
+    Checking the text alone would not have caught that — the words "MIT" and
+    "CC BY 4.0" were present on both pages while the links were broken on
+    one. So this resolves every local href against the page's own directory,
+    which is the assertion that actually distinguishes the two cases.
+    """
+    for relpath in ["index.html", "notes/physics/lorentz-poincare-groups.html"]:
+        html = read_html(site, relpath)
+        footer = extract_element(html, "nav-footer")
+        assert footer, f"no element with class 'nav-footer' on {relpath}"
+        assert "Patrick Oare" in footer, f"no copyright holder in the footer on {relpath}"
+        assert "CC BY 4.0" in footer, f"no content licence named in the footer on {relpath}"
+        assert "MIT" in footer, f"no code licence named in the footer on {relpath}"
+
+        page_dir = (site / relpath).parent
+        hrefs = re.findall(r'href="([^"]+)"', footer)
+        local = [h for h in hrefs if not re.match(r"^(?:https?://|//|mailto:|#)", h)]
+        assert local, f"footer on {relpath} has no local links to check"
+        for href in local:
+            target = (page_dir / href).resolve()
+            assert target.is_file(), (
+                f"footer on {relpath} links to {href}, which resolves to "
+                f"{target} — not present in the built output"
+            )
+
+
+def test_font_licence_is_served_with_the_fonts(site):
+    """The OFL wants its text to travel with the fonts it covers, and the
+    fonts are served to every visitor. Committing OFL.txt to the repo covers
+    source redistribution; this covers the built site.
+    """
+    served = site / "assets" / "fonts" / "OFL.txt"
+    assert served.is_file(), (
+        "assets/fonts/OFL.txt was not copied into _site — check the "
+        "resources entry in _quarto.yml"
+    )
+    assert "Reserved Font Name" in served.read_text(encoding="utf-8")
