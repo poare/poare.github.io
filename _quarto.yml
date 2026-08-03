@@ -25,6 +25,8 @@ website:
         href: notes/index.md
       - text: "Blog"
         href: blog/index.md
+      - text: "Contact"
+        href: contact.md
 
 execute:
   freeze: auto

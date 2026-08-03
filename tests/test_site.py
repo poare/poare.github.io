@@ -141,11 +141,11 @@ def test_colours_are_variables_not_literals():
     assert offenders == [], f"hard-coded colours found in rules: {offenders}"
 
 
-TABS = ["About", "CV", "Notes", "Blog"]
+TABS = ["About", "CV", "Notes", "Blog", "Contact"]
 
 
 def test_all_tabs_present_in_navbar(site):
-    """All four tabs appear *inside the navbar* — not merely somewhere on the page."""
+    """Every tab appears *inside the navbar* — not merely somewhere on the page."""
     navbar = extract_element(read_html(site, "index.html"), "navbar")
     assert navbar, "no element with class 'navbar' found on index.html"
     for tab in TABS:
@@ -153,19 +153,55 @@ def test_all_tabs_present_in_navbar(site):
 
 
 def test_tab_pages_are_generated(site):
-    for relpath in ["about.html", "cv/index.html",
-                    "notes/index.html", "blog/index.html"]:
+    for relpath in ["about.html", "cv/index.html", "notes/index.html",
+                    "blog/index.html", "contact.html"]:
         assert (site / relpath).is_file(), f"{relpath} was not generated"
 
 
-# Source file -> generated page, for the five top-level pages that must share
-# one layout. Kept together so a new tab is added to both halves at once.
+# The exact values published on the Contact page. Kept as constants so the
+# test states the intended values rather than re-deriving them from the page
+# it is checking — a test that reads the page for both sides of its own
+# assertion cannot catch a typo.
+CONTACT_EMAIL = "poare@bnl.gov"
+CONTACT_PROFILE_URLS = [
+    "https://inspirehep.net/authors/2134227",
+    "https://orcid.org/0000-0002-8244-6158",
+    "https://github.com/poare",
+    "https://www.linkedin.com/in/patrick-oare-50a750125/",
+]
+
+
+def test_contact_page_publishes_email_and_profiles(site):
+    """The email and all four profile links must be present and well-formed.
+
+    A typo in a profile URL is invisible until a visitor clicks it and lands
+    on someone else's page or a 404, and `github.com/poare` written without a
+    scheme would be treated as a relative path and 404 on this site — which
+    is why each URL is asserted in full rather than by substring.
+
+    The external URLs are deliberately NOT fetched. A suite that makes network
+    calls fails when a service is slow, rate-limits, or the runner has no
+    egress, none of which mean this site is broken.
+    """
+    html = read_html(site, "contact.html")
+
+    assert f'href="mailto:{CONTACT_EMAIL}"' in html, (
+        f"no mailto: link for {CONTACT_EMAIL} on the contact page"
+    )
+
+    for url in CONTACT_PROFILE_URLS:
+        assert f'href="{url}"' in html, f"contact page is missing a link to {url}"
+
+
+# Source file -> generated page, for the top-level pages that must share one
+# layout. Kept together so a new tab is added to both halves at once.
 TOP_LEVEL_PAGES = {
     "index.md": "index.html",
     "about.md": "about.html",
     "cv/index.md": "cv/index.html",
     "notes/index.md": "notes/index.html",
     "blog/index.md": "blog/index.html",
+    "contact.md": "contact.html",
 }
 
 
