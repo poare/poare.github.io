@@ -3,7 +3,10 @@ and the thumbnails generated from them — is licensed under the Creative
 Commons Attribution 4.0 International licence, reproduced in full below.
 
 Code is NOT covered by this licence. See LICENSE for the MIT terms that
-apply to the scripts, tests, theme and Quarto extension.
+apply to the scripts, tests, theme and Quarto extension. This includes code
+embedded in prose — for example the Python in an executable blog post — so
+a snippet may be reused under MIT without the attribution this licence
+would otherwise require.
 
 Some notes may reproduce figures, tables or quotations from textbooks and
 papers. That third-party material remains under its own terms and is not
