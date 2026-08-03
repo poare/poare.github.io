@@ -74,6 +74,13 @@ its own does not unpublish anything — the files stay until they are
   affected entry, re-render, and commit.
 - **Dark mode is deliberately not implemented.** See the comment at the top of
   `theme.scss` for the reasoning.
+- **The favicon is generated, not hand-drawn.** `assets/lqcd_icon.pdf` is the
+  master artwork; `python scripts/make_favicon.py` renders it to
+  `assets/favicon.svg` (primary) and `assets/favicon.png` (fallback for
+  browsers without SVG favicon support). Both outputs are committed, so a
+  fresh checkout needs nothing run — only re-run it if the artwork changes.
+  The script refuses to build a non-square icon, since that would be
+  letterboxed or stretched differently in every place it appears.
 - **`NOTES_ROOT` points at the working notes tree**, defaulting to
   `~/Dropbox (Personal)/notes`. The manifest stores source paths relative to
   it so no machine-specific path is committed to this public repo. Set the

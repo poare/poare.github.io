@@ -213,6 +213,63 @@ def test_top_level_pages_render_in_the_full_width_column(site):
         )
 
 
+def test_favicon_is_declared_and_shipped(site):
+    """Both favicon files must be linked AND actually present in the output.
+
+    Two separate failures are possible and only one is visible: a link with
+    no file behind it looks fine in the markup and shows the browser's
+    default globe to every visitor.
+
+    The SVG is the one at risk. It is referenced only from a raw <link> in
+    `include-in-header`, and it reaches _site because Quarto scans the
+    generated HTML and copies what it finds — verified by removing the
+    `resources:` entry that was originally added for it and confirming the
+    file still shipped, which is why that entry is not there. That copying
+    is incidental behaviour rather than something configured here, so this
+    test is what would catch a Quarto version that stopped doing it.
+
+    Checked on a nested page, not the homepage: Quarto rewrites the href per
+    page depth, so a path that works at the root can still 404 two levels
+    down.
+    """
+    for relpath in ["index.html", "notes/physics/lorentz-poincare-groups.html"]:
+        html = read_html(site, relpath)
+        links = re.findall(r'<link[^>]*rel="icon"[^>]*>', html)
+        assert len(links) == 2, (
+            f"{relpath} declares {len(links)} favicon link(s), expected 2 "
+            "(a PNG fallback and an SVG)"
+        )
+
+        hrefs = [re.search(r'href="([^"]+)"', link).group(1) for link in links]
+        assert any(h.endswith(".png") for h in hrefs), "no PNG favicon linked"
+        assert any(h.endswith(".svg") for h in hrefs), "no SVG favicon linked"
+
+        page_dir = (site / relpath).parent
+        for href in hrefs:
+            target = (page_dir / href).resolve()
+            assert target.is_file(), (
+                f"{relpath} links favicon {href}, which resolves to {target} "
+                "— not present in the built output"
+            )
+
+
+def test_favicon_source_artwork_is_square():
+    """A non-square favicon gets letterboxed or stretched, differently in
+    each place it appears. scripts/make_favicon.py refuses to build one, but
+    that script is only run by hand when the artwork changes; this asserts
+    the committed source still satisfies the rule.
+    """
+    import fitz
+
+    source = REPO_ROOT / "assets" / "lqcd_icon.pdf"
+    assert source.is_file(), "favicon source artwork is missing"
+    with fitz.open(source) as doc:
+        rect = doc.load_page(0).rect
+    assert abs(rect.width - rect.height) < 0.5, (
+        f"favicon source is {rect.width:.1f}x{rect.height:.1f}pt, not square"
+    )
+
+
 def test_full_text_search_is_enabled(site):
     """Quarto's built-in search is included — it partly compensates for PDFs
     being poorly indexed by search engines."""

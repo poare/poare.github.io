@@ -10,6 +10,11 @@ website:
   title: "Patrick Oare"
   site-url: "https://www.patrickoare.phd"
   search: true
+  # The PNG is the universally-supported fallback and is declared first;
+  # the SVG below overrides it wherever SVG favicons are supported.
+  # Regenerate both with `python scripts/make_favicon.py` if the source
+  # artwork at assets/lqcd_icon.pdf changes.
+  favicon: assets/favicon.png
   navbar:
     left:
       - text: "About"
@@ -27,6 +32,15 @@ execute:
 format:
   html:
     theme: theme.scss
+    # Quarto's `favicon:` key emits exactly one <link>, so the SVG is added
+    # here. It comes after the PNG link in the head, and carries an explicit
+    # type, so browsers that understand SVG favicons choose it and the rest
+    # fall back to the PNG. Written root-relative, but Quarto rewrites it per
+    # page depth on the way out (./assets/... at the root, ../../assets/...
+    # inside a notes topic), so it resolves correctly everywhere.
+    include-in-header:
+      - text: |
+          <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
     toc: false
     html-math-method:
       method: katex
