@@ -1,3 +1,4 @@
+import html
 import os
 import re
 import shutil
@@ -386,6 +387,53 @@ def test_note_stub_meta_description_tag_is_populated(site):
     assert match, "no <meta name=\"description\"> tag rendered on the stub page"
     assert "condition number" in match.group(1).lower(), (
         "meta description tag does not contain the front-matter description text"
+    )
+
+
+PHYSICS_NOTE = "notes/physics/lorentz-poincare-groups.html"
+
+
+def test_note_description_appears_exactly_once_in_body(site):
+    """Regression guard: the `pdf-note` shortcode used to re-emit the
+    front-matter `description` as a body paragraph even though Quarto's own
+    page template already prints that same text under the title — so the
+    description appeared twice inside <body> on every note page, and every
+    existing test still passed because they only assert the text is
+    *present*, never that it is present exactly once.
+
+    The expected text is derived from the page's own
+    <meta name="description" content="..."> tag rather than hard-coded, so
+    this keeps working if the note's description is edited later. The meta
+    attribute and the rendered body can HTML-escape the same characters
+    differently (`&amp;`, `&#39;`, accented letters, etc.), so comparing the
+    two verbatim would produce false mismatches unrelated to the bug this
+    test targets. To avoid that, pick a run of plain ASCII characters from
+    the (unescaped) meta content — a substring with no `&`, quotes, angle
+    brackets or non-ASCII letters renders identically in both places
+    regardless of escaping — and count occurrences of just that substring.
+    """
+    html_text = read_html(site, PHYSICS_NOTE)
+    match = re.search(r'<meta name="description" content="([^"]*)">', html_text)
+    assert match, "no <meta name=\"description\"> tag rendered on the stub page"
+    meta_content = html.unescape(match.group(1))
+
+    ascii_runs = re.findall(r"[A-Za-z0-9 ,.\-]{20,}", meta_content)
+    assert ascii_runs, (
+        "meta description has no plain-ASCII run of 20+ chars to key on; "
+        "pick a different needle strategy if the note's description changes"
+    )
+    needle = max(ascii_runs, key=len).strip()
+
+    body_match = re.search(r"<body[^>]*>(.*)</body>", html_text, re.DOTALL)
+    assert body_match, "no <body> element found on the stub page"
+    body = body_match.group(1)
+
+    count = body.count(needle)
+    assert count == 1, (
+        f"expected the description text {needle!r} to appear exactly once "
+        f"in <body>, found {count} — the pdf-note shortcode is likely "
+        "re-emitting the front-matter description that Quarto's page "
+        "template already renders under the title"
     )
 
 

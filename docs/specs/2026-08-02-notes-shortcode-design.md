@@ -104,9 +104,12 @@ is unaffected.
 A Lua shortcode invoked as `{{< pdf-note >}}`, emitting in order:
 
 1. The `.accent-rule` div
-2. The document's `description` metadata as body prose
-3. `[Download PDF](../pdf/<slug>.pdf){.btn .btn-primary}`
-4. The `<object>` viewer with its non-supporting-browser fallback link
+2. `[Download PDF](../pdf/<slug>.pdf){.btn .btn-primary}`
+3. The `<object>` viewer with its non-supporting-browser fallback link
+
+Quarto's own page template already renders the front-matter `description:`
+under the title, so the shortcode does not emit it a second time — an earlier
+version did, which put the same sentence on the page twice.
 
 Content authored after the shortcode in the stub renders after the viewer, so a
 note can carry errata, "supersedes the 2024 version", or links to related notes.

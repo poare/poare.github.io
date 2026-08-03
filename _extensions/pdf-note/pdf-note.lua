@@ -1,10 +1,12 @@
 -- Shared presentation markup for every notes stub page.
 --
--- Each note page is otherwise identical: an accent rule, the front-matter
--- description repeated as body prose, a download button, and an inline PDF
--- viewer. Hand-copying that into 20-30 files meant the slug was typed four
--- times per note and changing the presentation was a 30-file edit. This
--- shortcode owns all of it; a stub's body is one line.
+-- Each note page is otherwise identical: an accent rule, a download button,
+-- and an inline PDF viewer. (The front-matter `description:` itself is
+-- rendered under the title by Quarto's own page template — this shortcode
+-- must not repeat it, or it shows up twice in the body.) Hand-copying that
+-- into 20-30 files meant the slug was typed four times per note and
+-- changing the presentation was a 30-file edit. This shortcode owns all of
+-- it; a stub's body is one line.
 --
 -- Usage:  {{< pdf-note >}}              slug derived from the filename
 --         {{< pdf-note explicit-slug >}} slug given explicitly
@@ -40,19 +42,6 @@ return {
 
     local pdf_path = "../pdf/" .. slug .. ".pdf"
 
-    -- Reuse the description's inlines rather than flattening to a string,
-    -- so markup in the front matter (maths, emphasis) survives.
-    local description_inlines = pandoc.Inlines({})
-    if meta ~= nil and meta.description ~= nil then
-      if type(meta.description) == "table" then
-        description_inlines = pandoc.Inlines(meta.description)
-      else
-        description_inlines = pandoc.Inlines(
-          {pandoc.Str(pandoc.utils.stringify(meta.description))}
-        )
-      end
-    end
-
     local accent_rule = pandoc.Div(
       pandoc.Blocks({}),
       pandoc.Attr("", {"accent-rule"}, {})
@@ -77,7 +66,6 @@ return {
 
     return pandoc.Blocks({
       accent_rule,
-      pandoc.Para(description_inlines),
       download_button,
       viewer,
     })
