@@ -12,6 +12,12 @@ listing:
     sort: "title"
     fields: [image, title, description, categories]
     feed: false
+  - id: physics
+    contents: physics
+    type: grid
+    sort: "title"
+    fields: [image, title, description, categories]
+    feed: false
 ---
 
 ::: {.accent-rule}
@@ -24,4 +30,9 @@ before downloading it.
 ## Lattice QCD
 
 :::{#lattice-qcd}
+:::
+
+## Physics
+
+:::{#physics}
 :::

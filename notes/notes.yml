@@ -8,4 +8,6 @@
 #
 # Removing an entry does NOT unpublish the note — see "Unpublishing a note"
 # in the README.
-[]
+- slug: lorentz-poincare-groups
+  source: physics/lorentz_poincare_groups/lorentz_poincare_groups.pdf
+  topic: physics
