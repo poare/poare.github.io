@@ -15,7 +15,7 @@ def test_homepage_is_generated(site):
     assert "Patrick Oare" in html
 
 
-FONT_FACES = ["cmunrm", "cmunbx", "cmunti", "cmunbi", "cmunss", "cmuntt"]
+FONT_FACES = ["cmunrm", "cmunbx", "cmunti", "cmunbi", "cmuntt"]
 MAX_FONT_BYTES = 150 * 1024
 
 

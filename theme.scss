@@ -56,11 +56,6 @@ $headings-font-weight: 400;
   font-weight: 700; font-style: italic; font-display: swap;
 }
 @font-face {
-  font-family: "CMU Sans";
-  src: url("assets/fonts/cmunss.woff2") format("woff2");
-  font-weight: 400; font-style: normal; font-display: swap;
-}
-@font-face {
   font-family: "CMU Typewriter";
   src: url("assets/fonts/cmuntt.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
@@ -112,16 +107,6 @@ body {
   text-decoration-thickness: 1px;
   text-underline-offset: 5px;
   text-decoration-skip-ink: none;
-}
-
-// Small uppercase labels (dates, section eyebrows) use CMU Sans.
-.label-eyebrow {
-  font-family: "CMU Sans", sans-serif;
-  font-size: 0.62rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: $accent;
 }
 
 // Short accent rule used under page titles.

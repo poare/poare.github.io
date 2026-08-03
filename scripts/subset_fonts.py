@@ -24,7 +24,7 @@ SOURCE_DIRS = [
     Path("/usr/share/fonts/truetype/cmu"),  # Ubuntu package
 ]
 
-FACES = ["cmunrm", "cmunbx", "cmunti", "cmunbi", "cmunss", "cmuntt"]
+FACES = ["cmunrm", "cmunbx", "cmunti", "cmunbi", "cmuntt"]
 
 # Latin, Latin-1, Latin Extended-A, Greek, general punctuation,
 # super/subscripts, currency, letterlike symbols, arrows, maths operators,
@@ -65,7 +65,7 @@ def main():
 
         # A single bad face (e.g. a corrupt TTF, or one fontTools chokes on
         # for some unicode range it doesn't like) must not abort the whole
-        # run -- this regenerates all six committed WOFF2 files in one go,
+        # run -- this regenerates all five committed WOFF2 files in one go,
         # so an uncaught exception here would silently leave every face
         # after the bad one un-subsetted.
         try:

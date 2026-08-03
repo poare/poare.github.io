@@ -68,7 +68,7 @@ its own does not unpublish anything — the files stay until they are
   WOFF2 outputs are already committed under `assets/fonts/` — you do not need
   to regenerate them on a new machine. Only run
   `python scripts/subset_fonts.py` if you are deliberately re-subsetting (e.g.
-  a font update or a change to the Unicode ranges); it overwrites all six
+  a font update or a change to the Unicode ranges); it overwrites all five
   committed WOFF2 files, so check the resulting diff before committing.
 - **A `_freeze/` merge conflict** is not worth resolving by hand. Delete the
   affected entry, re-render, and commit.
