@@ -1,0 +1,21 @@
+Computer Modern Unicode fonts
+=============================
+
+The .woff2 files in this directory are SUBSETTED COPIES of the Computer
+Modern Unicode fonts by Andrey V. Panov — that is, modified versions. They
+were produced by scripts/subset_fonts.py, which strips glyphs outside the
+Unicode ranges this site needs in order to cut download size.
+
+  Upstream:  https://cm-unicode.sourceforge.io/
+  CTAN:      https://ctan.org/pkg/cm-unicode
+  Copyright: (c) 2003-2009 Andrey V. Panov
+  Licence:   SIL Open Font License, Version 1.1 — see OFL.txt in this
+             directory for the full text.
+
+The fonts' own metadata records: "Converted by Andrey V. Panov from TeX
+fonts. Some glyphs are copied from Blue Sky fonts released by AMS."
+
+The CSS declares these faces as "CMU Serif" and "CMU Typewriter". The
+licence's Reserved Font Name is "Computer Modern Unicode fonts", which
+those names do not contain, so the subsetted copies keep their original
+family names deliberately.

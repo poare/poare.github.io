@@ -90,6 +90,23 @@ its own does not unpublish anything — the files stay until they are
   `_extensions/pdf-note/pdf-note.lua` instead — that is the whole point of
   it, and `test_no_stub_hand_copies_the_viewer_markup` will fail otherwise.
 
+## Licensing
+
+Two licences, because prose and code want different terms:
+
+- **Prose, notes and their PDFs** — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  Reuse and adapt freely with attribution. See `LICENSE-CONTENT`.
+- **Code** — MIT. Scripts, tests, `theme.scss`, the Quarto extension. See `LICENSE`.
+
+`LICENSE` holds the MIT text because GitHub's licence detector reads that
+filename; it does not mean MIT covers the writing.
+
+The fonts under `assets/fonts/` are third-party work under the SIL Open Font
+License — subsetted copies of Computer Modern Unicode by Andrey V. Panov. That
+licence obliges us to ship its text and copyright notice, which is what
+`assets/fonts/OFL.txt` and `assets/fonts/NOTICE` are for. **Do not delete them,
+and do not rename the font families.**
+
 ## First-time setup on a new machine
 
 Install the Quarto CLI first — `quarto preview` and `quarto render` need it.

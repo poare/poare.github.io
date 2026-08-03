@@ -1491,3 +1491,62 @@ def test_no_local_filesystem_paths_leak_into_tracked_sources():
         "no machine-specific absolute path may land in any tracked file "
         "(rewrite as a relative path, '<repo>/...', or an env var reference)"
     )
+
+
+LICENCE_FILES = ["LICENSE", "LICENSE-CONTENT", "assets/fonts/OFL.txt",
+                 "assets/fonts/NOTICE"]
+
+
+def test_licence_files_exist_and_are_not_empty():
+    """Every licence the footer points at must actually be in the repo.
+
+    A footer promising CC BY with no licence file behind it is worse than
+    no notice at all: it tells people they may reuse the work while giving
+    them nothing to rely on.
+    """
+    for relpath in LICENCE_FILES:
+        path = REPO_ROOT / relpath
+        assert path.is_file(), f"{relpath} is missing"
+        assert path.stat().st_size > 200, (
+            f"{relpath} is {path.stat().st_size} bytes — suspiciously small "
+            "for a licence file; check the download did not truncate"
+        )
+
+
+def test_licence_texts_contain_their_operative_clauses():
+    """The licence texts are downloaded over a network, so the failure to
+    guard against is a truncated or error-page response committed silently.
+    Checking for clauses unique to each licence proves the real text landed,
+    where a size check alone would pass on an HTML error page.
+    """
+    ofl = (REPO_ROOT / "assets" / "fonts" / "OFL.txt").read_text(encoding="utf-8")
+    assert "Reserved Font Name" in ofl, "OFL.txt lacks the Reserved Font Name clause"
+    assert "SIL OPEN FONT LICENSE" in ofl.upper(), "OFL.txt is not the SIL OFL"
+
+    content = (REPO_ROOT / "LICENSE-CONTENT").read_text(encoding="utf-8")
+    assert "Attribution 4.0 International" in content, (
+        "LICENSE-CONTENT is not the CC BY 4.0 legal code"
+    )
+    assert "ShareAlike" not in content, (
+        "LICENSE-CONTENT looks like a ShareAlike licence, not plain CC BY"
+    )
+
+    mit = (REPO_ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert "MIT License" in mit, "LICENSE is not the MIT licence"
+    assert "Patrick Oare" in mit, "LICENSE has no copyright holder"
+    assert "<year>" not in mit and "[year]" not in mit, (
+        "LICENSE still contains an unfilled template placeholder"
+    )
+
+
+def test_font_notice_credits_upstream():
+    """The OFL requires the copyright notice to travel with the fonts. The
+    faces here are subsetted copies of someone else's work; the NOTICE is
+    what says so.
+    """
+    notice = (REPO_ROOT / "assets" / "fonts" / "NOTICE").read_text(encoding="utf-8")
+    assert "Panov" in notice, "NOTICE does not credit the font's author"
+    assert "cm-unicode.sourceforge.io" in notice, "NOTICE has no upstream URL"
+    assert "subset" in notice.lower(), (
+        "NOTICE does not record that these are subsetted, i.e. modified, copies"
+    )
