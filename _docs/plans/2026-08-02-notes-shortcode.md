@@ -4,7 +4,7 @@
 
 **Goal:** Replace the hand-copied notes stub workflow with a Lua shortcode that owns all shared presentation markup, plus a manifest recording which notes are approved for publication and a sync script that copies PDFs and scaffolds stubs without ever overwriting hand-written prose.
 
-**Architecture:** Four pieces with one responsibility each. `notes/notes.yml` records whether a note is published and where its source lives. `scripts/sync_notes.py` puts bytes on disk (PDF copy, thumbnail, first-time stub scaffold) and never touches an existing stub. `_extensions/pdf-note/` is a Lua shortcode owning how every note page looks. The stub `.md` owns what a note says. Spec: [docs/specs/2026-08-02-notes-shortcode-design.md](../specs/2026-08-02-notes-shortcode-design.md).
+**Architecture:** Four pieces with one responsibility each. `notes/notes.yml` records whether a note is published and where its source lives. `scripts/sync_notes.py` puts bytes on disk (PDF copy, thumbnail, first-time stub scaffold) and never touches an existing stub. `_extensions/pdf-note/` is a Lua shortcode owning how every note page looks. The stub `.md` owns what a note says. Spec: [_docs/specs/2026-08-02-notes-shortcode-design.md](../specs/2026-08-02-notes-shortcode-design.md).
 
 **Tech Stack:** Quarto 1.10.18 (pinned in CI), Lua shortcode extension, Python 3 (PyMuPDF for thumbnails, PyYAML for the manifest), pytest.
 

@@ -1023,3 +1023,61 @@ def test_notes_root_is_overridable(monkeypatch, tmp_path):
 
     monkeypatch.delenv("NOTES_ROOT", raising=False)
     assert sync_notes.notes_root() == Path("~/Dropbox (Personal)/notes").expanduser()
+
+
+def test_internal_planning_docs_are_not_published(site):
+    """`_docs/` holds internal design specs and implementation plans — notes
+    for whoever is building a feature, not content for site visitors. Quarto
+    renders every markdown file in the project by default, so before this
+    directory was underscore-prefixed it was silently built into the public
+    site as ordinary pages (e.g. _site/docs/plans/...html), leaking
+    developer-only planning documents (and the local absolute paths inside
+    them, see test_no_local_filesystem_paths_leak_into_site below) to anyone
+    who found the URL.
+
+    If this test fails, a directory holding internal-only docs has
+    reappeared without a leading underscore (or _quarto.yml's `render:`
+    list stopped excluding it). Rename it to start with `_` (Quarto's
+    built-in "do not render" convention) rather than adding a page-by-page
+    exclusion.
+    """
+    published_doc_pages = [
+        p for p in site.rglob("*.html") if "docs" in p.relative_to(site).parts
+    ]
+    assert not published_doc_pages, (
+        "internal docs were published to the site: "
+        f"{[str(p.relative_to(site)) for p in published_doc_pages]} -- "
+        "rename the source directory to start with '_' (e.g. docs/ -> "
+        "_docs/) so Quarto stops rendering it"
+    )
+
+
+def test_no_local_filesystem_paths_leak_into_site(site):
+    """General guard against the whole class of bug, not just one instance
+    of it: this is a PUBLIC site, so no generated HTML should ever contain
+    a developer's local absolute filesystem path (a macOS/Linux home
+    directory such as /Users/patrickoare or /home/someone). Such a path can
+    leak in from all sorts of places that have nothing to do with each
+    other -- a stray docstring rendered as prose, an error message baked
+    into a page at build time, a misconfigured resource path, a debug
+    print left in a template -- and every one of those is a future variant
+    of the exact defect that motivated this test (internal planning docs
+    under docs/ that embedded /Users/patrickoare/... paths and got
+    published). Asserting on the pattern directly, instead of only on the
+    one directory that leaked this time, catches the next occurrence too.
+
+    Scoped to *.html: notes/pdf/*.pdf and other binary resources are
+    copied verbatim and are not expected to be free of such substrings.
+    """
+    offenders = []
+    for path in site.rglob("*.html"):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "/Users/" in text or "/home/" in text:
+            offenders.append(str(path.relative_to(site)))
+    assert not offenders, (
+        "generated HTML contains a local absolute filesystem path "
+        "('/Users/' or '/home/'), which leaks developer machine layout "
+        f"to the public site: {offenders} -- find and remove the source "
+        "of the absolute path (e.g. hard-coded paths in prose, docstrings, "
+        "or error messages rendered into the page)"
+    )
