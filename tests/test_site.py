@@ -356,7 +356,7 @@ def test_display_math_delimiters_were_consumed_by_pandoc(site):
     assert "$$" not in html, "display-math delimiters survived unprocessed"
 
 
-NOTE = "notes/lattice-qcd/example-note.html"
+NOTE = "notes/physics/lorentz-poincare-groups.html"
 
 
 def test_note_stub_is_generated(site):
@@ -367,7 +367,7 @@ def test_note_stub_is_generated(site):
 
 def test_note_stub_has_indexable_description(site):
     html = read_html(site, NOTE)
-    assert "condition number" in html.lower(), (
+    assert "little-group" in html.lower(), (
         "the description text search engines rely on is missing"
     )
 
@@ -385,12 +385,9 @@ def test_note_stub_meta_description_tag_is_populated(site):
     html = read_html(site, NOTE)
     match = re.search(r'<meta name="description" content="([^"]*)">', html)
     assert match, "no <meta name=\"description\"> tag rendered on the stub page"
-    assert "condition number" in match.group(1).lower(), (
+    assert "little-group" in match.group(1).lower(), (
         "meta description tag does not contain the front-matter description text"
     )
-
-
-PHYSICS_NOTE = "notes/physics/lorentz-poincare-groups.html"
 
 
 def test_note_description_appears_exactly_once_in_body(site):
@@ -412,7 +409,7 @@ def test_note_description_appears_exactly_once_in_body(site):
     brackets or non-ASCII letters renders identically in both places
     regardless of escaping — and count occurrences of just that substring.
     """
-    html_text = read_html(site, PHYSICS_NOTE)
+    html_text = read_html(site, NOTE)
     match = re.search(r'<meta name="description" content="([^"]*)">', html_text)
     assert match, "no <meta name=\"description\"> tag rendered on the stub page"
     meta_content = html.unescape(match.group(1))
@@ -439,15 +436,17 @@ def test_note_description_appears_exactly_once_in_body(site):
 
 def test_notes_index_groups_by_topic(site):
     html = read_html(site, "notes/index.html")
-    assert "Lattice QCD" in html, "topic heading is missing"
-    assert "An example note" in html, "note is missing from its topic listing"
+    assert "Physics" in html, "topic heading is missing"
+    assert "The Lorentz and Poincaré Groups" in html, (
+        "note is missing from its topic listing"
+    )
 
 
 def test_pdf_is_copied_to_output(site):
     """`notes/pdf/orphan-fixture.pdf` is deliberately unreferenced by any
     stub page. Quarto's dependency scanner copies a PDF into _site whenever
-    some rendered page links to it (e.g. example-note.pdf, via the stub's
-    <object data=...>) — that would make this test pass even with the
+    some rendered page links to it (e.g. lorentz-poincare-groups.pdf, via
+    the stub's <object data=...>) — that would make this test pass even with the
     `resources:` key removed from _quarto.yml entirely. The whole point of
     `resources:` is to copy files that *nothing links to yet* (e.g. a PDF
     just dropped into notes/pdf/ before its stub page exists), so only an
@@ -471,19 +470,19 @@ def test_note_thumbnail_is_generated_and_referenced(site):
     missing from the page; a broken make_thumbs.py would leave nothing on
     disk at all. Either failure mode is caught.
     """
-    thumb = REPO_ROOT / "notes" / "thumbs" / "example-note.png"
-    assert thumb.is_file(), "make_thumbs.py did not produce example-note.png"
+    thumb = REPO_ROOT / "notes" / "thumbs" / "lorentz-poincare-groups.png"
+    assert thumb.is_file(), "sync_notes.py did not produce lorentz-poincare-groups.png"
 
     html = read_html(site, "notes/index.html")
     listing = extract_element(html, "quarto-listing")
     assert listing, "no element with class 'quarto-listing' rendered"
-    assert "thumbs/example-note.png" in listing, (
+    assert "thumbs/lorentz-poincare-groups.png" in listing, (
         "the listing card does not reference the generated thumbnail"
     )
 
 
 def test_notes_topic_listing_scoped_to_its_own_section(site):
-    """The 'Lattice QCD' listing must render as a child of its own heading's
+    """The 'Physics' listing must render as a child of its own heading's
     <section> — and the intro prose above the heading must NOT be swallowed
     into that same section. notes/index.md has the same shape that bit the
     blog page in an earlier task (prose, then a heading, then a generated
@@ -493,14 +492,14 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
     followed by its own listing div, so a section that fails to close would
     silently swallow every topic added after it.
 
-    extract_element also raises directly if the id="lattice-qcd" element's
+    extract_element also raises directly if the id="physics" element's
     markup never closes at all (unbalanced depth), which would itself mean
     the section swallowed the rest of the document.
     """
     html = read_html(site, "notes/index.html")
-    section = extract_element(html, "lattice-qcd", by="id")
-    assert section, "no element with id 'lattice-qcd' found"
-    assert 'id="listing-lattice-qcd"' in section, (
+    section = extract_element(html, "physics", by="id")
+    assert section, "no element with id 'physics' found"
+    assert 'id="listing-physics"' in section, (
         "the topic listing is not nested inside its own topic's <section>"
     )
     assert "Write-ups, derivations" not in section, (
@@ -528,11 +527,11 @@ def test_all_notes_stub_pdf_links_resolve(site):
 
     Globs every stub under notes/ (excluding the topic-index page notes/
     index.html, which has no PDF of its own) rather than hard-coding
-    "notes/lattice-qcd/example-note.html" — the point is that a new stub
-    added in a new topic folder is covered the day it is added, with no
-    test to remember to write. A mutation test proved the gap this closes:
-    pointing example-note.md's PDF path at a nonexistent file left all
-    previously-existing tests passing (including test_note_stub_is_
+    "notes/physics/lorentz-poincare-groups.html" — the point is that a new
+    stub added in a new topic folder is covered the day it is added, with
+    no test to remember to write. A mutation test proved the gap this
+    closes: pointing lorentz-poincare-groups.md's PDF path at a nonexistent
+    file left all previously-existing tests passing (including test_note_stub_is_
     generated, which only checks for the presence of a "Download PDF"
     string and an <object> tag — never that either resolves) while the
     download button and <object> viewer both 404 in the browser.

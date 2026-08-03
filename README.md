@@ -14,10 +14,14 @@ and deployed to GitHub Pages.
 - **Blog post** — create `blog/posts/YYYY-MM-DD-slug/index.md` with `title`,
   `date` and `categories` in the front matter. It appears in the listing
   automatically.
-- **Note** — put the PDF in `notes/pdf/`, run `python scripts/make_thumbs.py`,
-  then copy `notes/_note-template.md` into the matching topic folder and
-  replace the `TITLE` / `SLUG` / `DESCRIPTION` / `TOPIC` placeholders (the
-  leading underscore keeps the template itself out of the rendered site).
+- **Note** — add an entry to `notes/notes.yml` (`slug` in kebab-case,
+  `source` relative to `NOTES_ROOT`, `topic`), run
+  `python scripts/sync_notes.py`, then fill in the `TITLE` and
+  `DESCRIPTION` placeholders in the stub it scaffolds. The stub's body is
+  just `{{< pdf-note >}}`; the shortcode in `_extensions/pdf-note/` renders
+  the accent rule, description, download button and inline viewer. Write
+  any extra prose (errata, "supersedes the 2024 version") after the
+  shortcode — re-running the sync never touches an existing stub.
 - **Tab** — add two lines to the `navbar:` list in `_quarto.yml`.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
@@ -35,6 +39,11 @@ disappears, the download does not.
 Note that `git rm` removes the file from the *current* site, not from history:
 the PDF stays in every earlier commit, and this repo is public. Treat
 publishing as irreversible and decide before committing, not after.
+
+Also remove the note's entry from `notes/notes.yml`. Removing the entry on
+its own does not unpublish anything — the files stay until they are
+`git rm`'d — but leaving the entry behind after deleting the files fails
+`test_every_manifest_entry_has_its_files`.
 
 ## Conventions worth knowing
 
@@ -61,6 +70,14 @@ publishing as irreversible and decide before committing, not after.
   affected entry, re-render, and commit.
 - **Dark mode is deliberately not implemented.** See the comment at the top of
   `theme.scss` for the reasoning.
+- **`NOTES_ROOT` points at the working notes tree**, defaulting to
+  `~/Dropbox (Personal)/notes`. The manifest stores source paths relative to
+  it so no machine-specific path is committed to this public repo. Set the
+  env var on any machine whose notes live elsewhere.
+- **Presentation markup belongs in the shortcode, not in a stub.** If you
+  find yourself pasting an `<object>` tag into a note, change
+  `_extensions/pdf-note/pdf-note.lua` instead — that is the whole point of
+  it, and `test_no_stub_hand_copies_the_viewer_markup` will fail otherwise.
 
 ## First-time setup on a new machine
 

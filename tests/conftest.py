@@ -89,7 +89,7 @@ def assert_local_links_resolve(site, page_relpath, suffix=".pdf"):
     local to check. Root-relative hrefs (leading "/") resolve against the
     site root; plain relative hrefs resolve against the page's OWN
     directory, not a hard-coded location — this is what lets the same
-    helper validate a nested notes stub (e.g. notes/lattice-qcd/foo.html
+    helper validate a nested notes stub (e.g. notes/physics/foo.html
     linking to ../pdf/foo.pdf) as well as cv/index.html.
     """
     html = read_html(site, page_relpath)
