@@ -26,9 +26,47 @@ and deployed to GitHub Pages.
   note for a new topic, add a listing section for it there too (copy the
   `## Physics` / `:::{#physics}:::` pattern), or the note renders but never
   appears on `/notes`.
+- **Top-level page** — `index.md` (home), `about.md`, `cv/index.md` and
+  `contact.md` are plain Markdown; edit them directly. Keep the
+  `page-layout: full` line in the front matter: it is what makes the left
+  gutter match every other tab, and two tests enforce it.
 - **Tab** — add two lines to the `navbar:` list in `_quarto.yml`.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
+
+## Images
+
+Quarto copies any image a page actually links to into the built site, so
+neither case below needs configuration. Both are verified against a real
+render.
+
+**Used by one blog post** — put the file in that post's own folder, beside its
+`index.md`, and reference it by bare filename:
+
+```markdown
+![The residual stagnates after the 40th iteration.](residual.png)
+```
+
+**Used by a top-level page, or shared between pages** — put it in
+`assets/images/` and reference it from the site root with a leading slash:
+
+```markdown
+![](/assets/images/portrait.jpg){width=200}
+```
+
+The leading slash matters. Quarto rewrites root-relative image paths per page
+depth on the way out, so the same line works from `index.md` and from a page
+two directories down. A sibling file next to `about.md` would also work, but
+it litters the repo root.
+
+The text in brackets is both the caption and the alt text for screen readers.
+Leave it empty (`![](…)`) for no caption. Size with `{width=70%}` or
+`{width=200}`.
+
+**To give a blog post a card thumbnail**, add `image:` to its front matter
+pointing at a file in the post folder (`image: residual.png`). Posts without
+one get a clean text card — `theme.scss` hides the empty grey block Quarto
+would otherwise reserve.
 
 ## Unpublishing a note
 
