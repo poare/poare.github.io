@@ -5,9 +5,15 @@ and deployed to GitHub Pages.
 
 ## Working on it
 
-    quarto preview          # live preview at localhost, reloads on save
-    pytest tests/ -v        # verify the built output
-    git push                # GitHub renders and republishes automatically
+    quarto preview                  # live preview at localhost, reloads on save
+    python -m pytest tests/ -v      # verify the built output
+    git push                        # GitHub renders and republishes automatically
+
+Use `python -m pytest`, not bare `pytest`. The `-m` form runs the interpreter
+you invoked; a bare `pytest` uses whichever one appears first on `PATH`, which
+may belong to a different environment and will then fail to import this
+project's dependencies. That looks like a broken test suite rather than the
+wrong Python.
 
 ## Adding content
 
@@ -163,8 +169,15 @@ Then set up the Python side:
     source .venv/bin/activate
     pip install -r requirements.txt
 
-**If you use conda or any other environment instead, install from
-`requirements.txt` there — and never `pip install fitz`.** The scripts import
+**If you use conda or any other environment instead**, install this project's
+dependencies into that environment rather than globally — activate it, then:
+
+    pip install -r requirements.txt
+
+`jupyter` and `matplotlib` in that list are only needed to re-render the
+notebook blog post; everything else is needed for the scripts and the tests.
+
+**And never `pip install fitz`.** The scripts import
 PyMuPDF, whose legacy module name is `fitz`, but the name `fitz` on PyPI
 belongs to an unrelated package. Installing it succeeds and then fails at
 import with `RuntimeError: Directory 'static/' does not exist`, which points
