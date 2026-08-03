@@ -359,6 +359,51 @@ def test_display_math_delimiters_were_consumed_by_pandoc(site):
 NOTE = "notes/physics/lorentz-poincare-groups.html"
 
 
+def _note_stub_path(note_html_relpath):
+    """Map a rendered note page's site-relative path to its .md source stub.
+
+    e.g. "notes/physics/lorentz-poincare-groups.html" ->
+    <repo>/notes/physics/lorentz-poincare-groups.md
+    """
+    return REPO_ROOT / Path(note_html_relpath).with_suffix(".md")
+
+
+def _note_stub_front_matter(note_html_relpath):
+    """Parse the YAML front matter of the .md stub behind a rendered note page.
+
+    Tests key on this instead of retyping the stub's prose as a literal
+    string. The whole design premise of a stub is hand-written prose the
+    author edits freely (title, description, errata) -- a test that
+    retypes today's wording fails on a legitimate future edit as a false
+    alarm, not because anything broke. Deriving the expected text from the
+    stub's own front matter keeps the test meaningful across such edits.
+    """
+    import yaml
+
+    stub_path = _note_stub_path(note_html_relpath)
+    text = stub_path.read_text(encoding="utf-8")
+    match = re.match(r"^---\n(.*?\n)---\n", text, re.DOTALL)
+    assert match, f"{stub_path} has no YAML front matter"
+    return yaml.safe_load(match.group(1))
+
+
+def _ascii_needle(text):
+    """Pick a run of plain ASCII characters (20+ chars) out of `text`.
+
+    Such a substring has no `&`, quotes, angle brackets or non-ASCII
+    letters, so it renders identically whether or not the surrounding
+    context HTML-escapes those characters -- see
+    test_note_description_appears_exactly_once_in_body for the full
+    rationale this is factored out of.
+    """
+    ascii_runs = re.findall(r"[A-Za-z0-9 ,.\-]{20,}", text)
+    assert ascii_runs, (
+        f"{text!r} has no plain-ASCII run of 20+ chars to key on; pick a "
+        "different needle strategy if this text changes"
+    )
+    return max(ascii_runs, key=len).strip()
+
+
 def test_note_stub_is_generated(site):
     html = read_html(site, NOTE)
     assert "Download PDF" in html, "stub is missing a download link"
@@ -366,8 +411,17 @@ def test_note_stub_is_generated(site):
 
 
 def test_note_stub_has_indexable_description(site):
-    html = read_html(site, NOTE)
-    assert "little-group" in html.lower(), (
+    """The description text search engines rely on must reach the body.
+
+    The expected substring is derived from the stub's own front-matter
+    `description:` field (via _note_stub_front_matter/_ascii_needle) rather
+    than hard-coded as the literal "little-group" -- a legitimate rewrite
+    of the description would otherwise fail this test as a false alarm.
+    """
+    html_text = read_html(site, NOTE)
+    front_matter = _note_stub_front_matter(NOTE)
+    needle = _ascii_needle(front_matter["description"])
+    assert needle.lower() in html_text.lower(), (
         "the description text search engines rely on is missing"
     )
 
@@ -381,11 +435,20 @@ def test_note_stub_meta_description_tag_is_populated(site):
     <meta name="description" content="...">. Verified this discriminates: with
     the front-matter `description:` line removed, this test fails (no such
     meta tag is rendered); restored, it passes.
+
+    The expected substring is derived from the stub's own front matter
+    (not the meta tag itself, which is exactly what is under test here, and
+    not a hard-coded literal, which would false-alarm on a legitimate
+    description edit).
     """
-    html = read_html(site, NOTE)
-    match = re.search(r'<meta name="description" content="([^"]*)">', html)
+    html_text = read_html(site, NOTE)
+    match = re.search(r'<meta name="description" content="([^"]*)">', html_text)
     assert match, "no <meta name=\"description\"> tag rendered on the stub page"
-    assert "little-group" in match.group(1).lower(), (
+    meta_content = html.unescape(match.group(1))
+
+    front_matter = _note_stub_front_matter(NOTE)
+    needle = _ascii_needle(front_matter["description"])
+    assert needle.lower() in meta_content.lower(), (
         "meta description tag does not contain the front-matter description text"
     )
 
@@ -435,9 +498,15 @@ def test_note_description_appears_exactly_once_in_body(site):
 
 
 def test_notes_index_groups_by_topic(site):
-    html = read_html(site, "notes/index.html")
-    assert "Physics" in html, "topic heading is missing"
-    assert "The Lorentz and Poincaré Groups" in html, (
+    """The expected title is derived from the stub's own front matter
+    rather than hard-coded as the literal "The Lorentz and Poincaré
+    Groups" -- a legitimate title revision would otherwise fail this test
+    as a false alarm, not because the listing broke.
+    """
+    html_text = read_html(site, "notes/index.html")
+    assert "Physics" in html_text, "topic heading is missing"
+    front_matter = _note_stub_front_matter(NOTE)
+    assert front_matter["title"] in html_text, (
         "note is missing from its topic listing"
     )
 
@@ -863,19 +932,60 @@ def test_render_thumbnail_rejects_an_empty_pdf(tmp_path, monkeypatch):
         make_thumbs.render_thumbnail(pdf_path)
 
 
-def test_manifest_slugs_are_kebab_case():
-    """A slug becomes a public URL. snake_case or capitals reaching it is
-    both ugly and, for search engines, a single unreadable token — and it
-    is not fixable later without breaking a published link.
+def test_manifest_is_not_empty():
+    """load_manifest itself raises ManifestError on anything actually
+    malformed (missing keys, bad slugs, duplicates, absolute paths -- see
+    test_manifest_rejects_a_bad_entry), so a loop reasserting SLUG_RE.match
+    on entries it already returned could never fail: load_manifest would
+    have raised first. That made the old version of this test tautological.
+    The kebab-case rule itself is genuinely covered -- by
+    test_manifest_rejects_a_bad_entry's "kebab-case" cases, which drive it
+    through the rejection path directly. What is NOT covered elsewhere is
+    the possibility of an empty-but-well-formed manifest (`notes.yml`
+    truncated to nothing, or every entry deleted), which load_manifest
+    would happily accept as a valid empty list -- so that is what this
+    keeps checking.
     """
     from scripts import sync_notes
 
     entries = sync_notes.load_manifest(sync_notes.MANIFEST)
     assert entries, "notes.yml lists no notes"
-    for entry in entries:
-        assert sync_notes.SLUG_RE.match(entry["slug"]), (
-            f"slug {entry['slug']!r} is not kebab-case"
-        )
+
+
+def test_manifest_topics_have_a_matching_notes_index_listing():
+    """The spec requires a manifest entry's `topic` to correspond to a
+    listing in notes/index.md, but nothing previously checked that. Adding
+    an entry with e.g. `topic: math` (no "math" listing section) still
+    scaffolds a stub, passes every other test, and renders a publicly
+    reachable page at notes/math/<slug>.html -- one that appears nowhere on
+    /notes, since no listing block ever points at notes/math/.
+
+    This parses the YAML front matter of notes/index.md, collects every
+    `id:` under its `listing:` block, and asserts every distinct topic in
+    notes.yml has a matching id.
+    """
+    import yaml
+
+    from scripts import sync_notes
+
+    entries = sync_notes.load_manifest(sync_notes.MANIFEST)
+    manifest_topics = {entry["topic"] for entry in entries}
+
+    index_text = (REPO_ROOT / "notes" / "index.md").read_text(encoding="utf-8")
+    front_matter_match = re.match(r"^---\n(.*?\n)---\n", index_text, re.DOTALL)
+    assert front_matter_match, "notes/index.md has no YAML front matter"
+    front_matter = yaml.safe_load(front_matter_match.group(1))
+
+    listings = front_matter.get("listing") or []
+    listed_ids = {item["id"] for item in listings if isinstance(item, dict) and "id" in item}
+
+    missing = manifest_topics - listed_ids
+    assert not missing, (
+        f"notes.yml has topic(s) {sorted(missing)} with no matching `id:` "
+        "under notes/index.md's `listing:` block -- add a listing section "
+        "for the new topic (see the README's 'Adding content -- Note' "
+        f"bullet). Listed ids: {sorted(listed_ids)}"
+    )
 
 
 def test_every_manifest_entry_has_its_files():
@@ -963,6 +1073,47 @@ def test_sync_never_overwrites_an_existing_stub(tmp_path):
     )
 
 
+def test_scaffold_stub_does_not_follow_a_dangling_symlink(tmp_path):
+    """`stub_path.exists()` returns False for a DANGLING symlink (one whose
+    target does not exist) -- a check-then-write guard built on `.exists()`
+    would therefore treat the path as free, and `write_text` would follow
+    the link and write the placeholder to wherever it points, potentially
+    outside the notes tree entirely. Reproduced by hand before this fix:
+    pointing a dangling symlink at a file outside a scratch notes tree and
+    calling scaffold_stub silently created that outside file.
+
+    The fix opens with "x" (exclusive create), which POSIX defines as
+    failing on a symlink -- dangling or not -- without following it, so
+    this asserts scaffold_stub now returns False (preserving the
+    already-written-so-don't-touch-it contract) and never creates anything
+    at the link's target.
+    """
+    from scripts import sync_notes
+
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    outside_target = outside_dir / "escaped.md"
+
+    notes_dir = tmp_path / "notes_tree"
+    notes_dir.mkdir()
+    stub = notes_dir / "a-note.md"
+    stub.symlink_to(outside_target)  # target does not exist -- dangling
+
+    assert not stub.exists(), "fixture is not actually a dangling symlink"
+
+    result = sync_notes.scaffold_stub(stub, "a-note", "physics")
+
+    assert result is False, (
+        "scaffold_stub must treat an occupied (even dangling-symlink) path "
+        "as already having a stub, not as free to write"
+    )
+    assert not outside_target.exists(), (
+        "scaffold_stub followed the dangling symlink and wrote outside the "
+        "notes tree"
+    )
+    assert stub.is_symlink(), "scaffold_stub must not remove the existing symlink"
+
+
 def test_sync_entry_never_overwrites_an_existing_stub(tmp_path, monkeypatch):
     """test_sync_never_overwrites_an_existing_stub (above) proves scaffold_stub's
     own guard works, but scaffold_stub is a private helper and sync_entry is
@@ -1011,6 +1162,62 @@ def test_sync_entry_never_overwrites_an_existing_stub(tmp_path, monkeypatch):
     )
 
 
+def test_sync_entry_rejects_a_slug_republished_under_a_different_topic(tmp_path, monkeypatch):
+    """slug de-duplication only happens WITHIN the manifest (load_manifest's
+    `seen` set) -- nothing previously checked whether `<slug>.md` already
+    existed under a DIFFERENT topic directory on disk. Reproduced by hand
+    before this fix: with notes/physics/a-note.md already published,
+    syncing {slug: a-note, topic: math} (e.g. after a typo'd or
+    since-changed `topic:` in notes.yml) happily scaffolded
+    notes/math/a-note.md too, leaving BOTH pages live for one PDF, with no
+    test failing.
+
+    This drives that exact scenario through sync_entry with the module's
+    path constants monkeypatched to tmp_path (as in the never-overwrites
+    test above), and asserts it now raises before writing anything under
+    the new topic -- and that the original stub is left untouched.
+    """
+    import fitz
+
+    from scripts import make_thumbs, sync_notes
+
+    repo_root = tmp_path / "repo"
+    (repo_root / "notes" / "physics").mkdir(parents=True)
+    monkeypatch.setattr(sync_notes, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(sync_notes, "PDF_DIR", repo_root / "notes" / "pdf")
+    monkeypatch.setattr(make_thumbs, "THUMB_DIR", repo_root / "notes" / "thumbs")
+
+    existing_stub = repo_root / "notes" / "physics" / "a-note.md"
+    existing_stub.write_text(
+        '---\ntitle: "A Note"\ndescription: "desc"\ncategories: [physics]\n'
+        "image: ../thumbs/a-note.png\n---\n\n{{< pdf-note >}}\n",
+        encoding="utf-8",
+    )
+
+    notes_root = tmp_path / "notes-root"
+    notes_root.mkdir()
+    source = notes_root / "a-note.pdf"
+    doc = fitz.open()
+    doc.new_page(width=200, height=200)
+    doc.save(source)
+    doc.close()
+
+    entry = {"slug": "a-note", "source": "a-note.pdf", "topic": "math"}
+
+    with pytest.raises(FileExistsError, match="a-note"):
+        sync_notes.sync_entry(entry, notes_root)
+
+    assert existing_stub.is_file(), "the original stub must be left untouched"
+    assert not (repo_root / "notes" / "math" / "a-note.md").exists(), (
+        "sync_entry must not scaffold a second stub for the same slug "
+        "under a different topic"
+    )
+    assert not (repo_root / "notes" / "pdf" / "a-note.pdf").exists(), (
+        "sync_entry must raise before copying the PDF, not just before "
+        "scaffolding the stub"
+    )
+
+
 def test_notes_root_is_overridable(monkeypatch, tmp_path):
     """The Ubuntu machine's notes tree is not at the macOS default. The env
     var is the only thing that makes the committed manifest portable, so a
@@ -1022,7 +1229,7 @@ def test_notes_root_is_overridable(monkeypatch, tmp_path):
     assert sync_notes.notes_root() == tmp_path
 
     monkeypatch.delenv("NOTES_ROOT", raising=False)
-    assert sync_notes.notes_root() == Path("~/Dropbox (Personal)/notes").expanduser()
+    assert sync_notes.notes_root() == Path(sync_notes.DEFAULT_NOTES_ROOT).expanduser()
 
 
 def test_internal_planning_docs_are_not_published(site):
@@ -1080,4 +1287,59 @@ def test_no_local_filesystem_paths_leak_into_site(site):
         f"to the public site: {offenders} -- find and remove the source "
         "of the absolute path (e.g. hard-coded paths in prose, docstrings, "
         "or error messages rendered into the page)"
+    )
+
+
+def test_no_local_filesystem_paths_leak_into_tracked_sources():
+    """The rendered-output guard above (test_no_local_filesystem_paths_leak_
+    into_site) only ever sees a leak *after* it has already reached a public
+    page. A tracked planning doc under `_docs/` (excluded from rendering,
+    see test_internal_planning_docs_are_not_published) can still hold a
+    machine-specific absolute path and fail the project's own stated
+    constraint -- "no machine-specific absolute path in any tracked file" --
+    without ever tripping the HTML-only check, since it is never rendered at
+    all. This scans every git-TRACKED file directly for the same pattern.
+
+    Excludes this file (tests/test_site.py) by exact path, not by weakening
+    the search pattern: it legitimately contains the literal strings
+    "/Users/" and "/home/" as this test's own and the sibling test's search
+    needles, and that is not the defect either test exists to catch.
+
+    Restricted to text files: binary blobs (PDFs, PNGs, woff2 fonts) are not
+    expected to be free of arbitrary byte sequences that happen to match,
+    and are skipped by attempting a strict UTF-8 decode -- a failure there
+    means the file is binary (or at least not the kind of hand-authored
+    prose/config this check is for), so it is skipped rather than misread.
+    """
+    THIS_FILE = "tests/test_site.py"
+
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"git ls-files failed:\n{result.stderr}"
+    tracked = [line for line in result.stdout.splitlines() if line]
+    assert tracked, "git ls-files returned no tracked files"
+
+    offenders = []
+    for relpath in tracked:
+        if relpath == THIS_FILE:
+            continue
+        path = REPO_ROOT / relpath
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError:
+            continue  # binary file -- not in scope for this check
+        if "/Users/" in text or "/home/" in text:
+            offenders.append(relpath)
+
+    assert not offenders, (
+        "tracked source file(s) contain a local absolute filesystem path "
+        f"('/Users/' or '/home/'): {offenders} -- this is a public repo, so "
+        "no machine-specific absolute path may land in any tracked file "
+        "(rewrite as a relative path, '<repo>/...', or an env var reference)"
     )

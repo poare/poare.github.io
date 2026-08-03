@@ -70,10 +70,10 @@ Replace the body of `notes/lattice-qcd/example-note.md` (everything after the cl
 
 Run: `quarto render notes/lattice-qcd/example-note.md --to html && grep -o 'PROBE input_file=[^<]*' _site/notes/lattice-qcd/example-note.html`
 
-Expected: a line like `PROBE input_file=/Users/patrickoare/website/notes/lattice-qcd/example-note.md`.
+Expected: a line like `PROBE input_file=<repo>/notes/lattice-qcd/example-note.md`.
 
 > **RESOLVED 2026-08-02 — do not re-run this spike.** Quarto 1.10.18 returned
-> `PROBE input_file=/Users/patrickoare/website/notes/lattice-qcd/example-note.md`.
+> `PROBE input_file=<repo>/notes/lattice-qcd/example-note.md`.
 > `quarto.doc.input_file` **is** available inside a shortcode and gives the
 > absolute path to the source file. The bare `{{< pdf-note >}}` form is
 > therefore the one to build; the fallback below does **not** apply. Steps 1
@@ -910,7 +910,7 @@ Run: `python scripts/sync_notes.py`
 Expected output:
 
 ```
-NOTES_ROOT = /Users/patrickoare/Dropbox (Personal)/notes
+NOTES_ROOT = $NOTES_ROOT
   pdf    lorentz-poincare-groups.pdf
   thumb  lorentz-poincare-groups.png
   stub   notes/physics/lorentz-poincare-groups.md  <- fill in TITLE and DESCRIPTION

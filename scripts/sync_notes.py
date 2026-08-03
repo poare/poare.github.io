@@ -141,11 +141,28 @@ def scaffold_stub(stub_path, slug, topic):
     """Write a placeholder stub if none exists. Returns True if it wrote one.
 
     Never overwrites: an existing stub holds hand-written prose.
+
+    The existence check and the write must be one atomic operation, not
+    two: `stub_path.exists()` returns False for a DANGLING SYMLINK (a
+    symlink whose target does not exist), so a check-then-write would let
+    `write_text` follow that link and write the stub outside the notes
+    tree entirely -- reproduced by hand: a dangling symlink at the stub
+    path caused the placeholder to be silently written to the link's
+    target instead. The same two-step check also has a TOCTOU race between
+    two concurrent runs, both of which could pass the `exists()` guard
+    before either writes. Opening with the "x" (exclusive-create) mode
+    closes both gaps: the OS creates and opens the file in one step and
+    fails with FileExistsError if the path is already occupied by
+    anything -- a real file, or a symlink, dangling or not -- since "x"
+    refuses to follow a symlink whose target is absent rather than
+    creating through it.
     """
-    if stub_path.exists():
-        return False
     stub_path.parent.mkdir(parents=True, exist_ok=True)
-    stub_path.write_text(STUB_TEMPLATE.format(slug=slug, topic=topic), encoding="utf-8")
+    try:
+        with open(stub_path, "x", encoding="utf-8") as handle:
+            handle.write(STUB_TEMPLATE.format(slug=slug, topic=topic))
+    except FileExistsError:
+        return False
     return True
 
 
@@ -161,6 +178,26 @@ def sync_entry(entry, root, force_thumbs=False):
 
     lines = []
 
+    # Slugs are only deduped WITHIN the manifest (see load_manifest). If an
+    # entry's topic changes (or is typo'd) after its stub was already
+    # scaffolded under the old topic, nothing above this point notices --
+    # this would scaffold a second stub under the new topic and leave the
+    # old one live, publishing the same PDF twice with no test failing.
+    # Catch it here by checking the filesystem itself for any existing
+    # `<slug>.md` under a DIFFERENT topic directory before writing anything.
+    stub_path = REPO_ROOT / "notes" / topic / f"{slug}.md"
+    for existing in (REPO_ROOT / "notes").glob(f"*/{slug}.md"):
+        if existing != stub_path:
+            raise FileExistsError(
+                f"{slug!r} already has a stub at "
+                f"{existing.relative_to(REPO_ROOT)}, but notes.yml now "
+                f"declares topic {topic!r} (expecting "
+                f"{stub_path.relative_to(REPO_ROOT)}). A slug must not be "
+                "published under two topics at once -- `git rm "
+                f"{existing.relative_to(REPO_ROOT)}` if the topic change is "
+                "intentional, then re-run the sync."
+            )
+
     # The PDF is a build input, never hand-edited, so overwriting it is how
     # a recompiled note gets picked up.
     PDF_DIR.mkdir(parents=True, exist_ok=True)
@@ -171,7 +208,6 @@ def sync_entry(entry, root, force_thumbs=False):
     thumb = render_thumbnail(target_pdf, force=force_thumbs)
     lines.append(f"thumb  {slug}.png" if thumb else f"skip   {slug}.png (exists)")
 
-    stub_path = REPO_ROOT / "notes" / topic / f"{slug}.md"
     if scaffold_stub(stub_path, slug, topic):
         lines.append(f"stub   {stub_path.relative_to(REPO_ROOT)}  <- fill in TITLE and DESCRIPTION")
     else:

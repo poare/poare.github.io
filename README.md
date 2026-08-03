@@ -19,9 +19,13 @@ and deployed to GitHub Pages.
   `python scripts/sync_notes.py`, then fill in the `TITLE` and
   `DESCRIPTION` placeholders in the stub it scaffolds. The stub's body is
   just `{{< pdf-note >}}`; the shortcode in `_extensions/pdf-note/` renders
-  the accent rule, description, download button and inline viewer. Write
-  any extra prose (errata, "supersedes the 2024 version") after the
-  shortcode — re-running the sync never touches an existing stub.
+  the accent rule, download button and inline viewer. Write any extra prose
+  (errata, "supersedes the 2024 version") after the shortcode — re-running
+  the sync never touches an existing stub. `topic` must correspond to an
+  `id:` in the `listing:` block of `notes/index.md` — if this is the first
+  note for a new topic, add a listing section for it there too (copy the
+  `## Physics` / `:::{#physics}:::` pattern), or the note renders but never
+  appears on `/notes`.
 - **Tab** — add two lines to the `navbar:` list in `_quarto.yml`.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
