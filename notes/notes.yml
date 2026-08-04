@@ -39,3 +39,7 @@
 - slug: standard-model
   source: physics/standard_model/standard_model.pdf
   topic: physics
+
+- slug: chiral-lagrangian-lattice
+  source: physics/chiral_lagrangian_lattice/chiral_lagrangian_lattice.pdf
+  topic: physics
