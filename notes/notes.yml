@@ -47,3 +47,35 @@
 - slug: measure-theory
   source: math/measure_theory/measure_theory.pdf
   topic: math
+
+- slug: group-theory
+  source: math/group_theory/group_theory.pdf
+  topic: math
+
+- slug: linear-algebra
+  source: math/linear_algebra/linear_algebra.pdf
+  topic: math
+
+- slug: galois-theory
+  source: math/galois_theory/galois_theory.pdf
+  topic: math
+
+- slug: set-theory
+  source: math/set_theory/set_theory.pdf
+  topic: math
+
+- slug: homology
+  source: math/algebraic_topology/Homology/homology.pdf
+  topic: math
+
+- slug: homotopy
+  source: math/algebraic_topology/Homotopy/homotopy.pdf
+  topic: math
+
+- slug: top-manifolds
+  source: math/algebraic_topology/Manifolds/manifolds.pdf
+  topic: math
+
+- slug: diff-forms
+  source: math/differential_forms/differential_forms.pdf
+  topic: math
