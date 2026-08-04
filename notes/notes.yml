@@ -31,3 +31,11 @@
 - slug: local-operator-renormalization
   source: physics/local_operator_renorm/local_operator_renorm.pdf
   topic: physics
+
+- slug: representation-theory
+  source: physics/representation_theory/representation_theory.pdf
+  topic: physics
+
+- slug: standard-model
+  source: physics/standard_model/standard_model.pdf
+  topic: physics
