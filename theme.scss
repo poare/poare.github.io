@@ -109,6 +109,49 @@ body {
   text-decoration-skip-ink: none;
 }
 
+// The hamburger shown below the collapse breakpoint. Bootstrap derives its
+// icon from its own navbar defaults, which assume a dark bar, and ships it
+// as a data-URI SVG stroked in near-white (rgb(253.26, 253.63, 253.98)) —
+// invisible against this theme's cream navbar. The colour lives inside the
+// SVG, so no `color` or `fill` rule reaches it; the whole image has to be
+// replaced.
+//
+// The stroke is written as rgb() from $accent's channels rather than as a
+// hex literal: "#" would need percent-encoding inside a data URI, and a
+// literal here would both duplicate the palette and trip
+// test_colours_are_variables_not_literals.
+.navbar .navbar-toggler-icon {
+  --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgb(#{red($accent)},#{green($accent)},#{blue($accent)})' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+// A hairline border so the control still reads as a button, in the same
+// faded accent used for nav hover — quiet enough not to reintroduce the
+// pill-shaped chrome the underlined nav exists to avoid.
+.navbar .navbar-toggler {
+  border-color: $accent-faded;
+}
+
+.navbar .navbar-toggler:focus {
+  box-shadow: 0 0 0 2px $accent-faded;
+}
+
+// The search icon had the same white-on-cream problem as the hamburger, from
+// a different source: Quarto ships its own rule with the colour baked in,
+//
+//   #quarto-search.type-overlay .aa-Autocomplete svg.aa-SubmitIcon
+//     { color: rgb(253.26, 253.63, 253.98) }
+//
+// which carries an id and three classes, so it beats anything less specific.
+// Overriding --bs-navbar-color does NOT reach it (tried, and the icon stayed
+// white); the selector has to be matched and out-weighted directly.
+//
+// $muted rather than $accent: this is a secondary control that sits in the bar
+// at every width, so it is coloured like an inactive nav link. The hamburger
+// is accent because it stands in for the whole nav when collapsed.
+.navbar #quarto-search.type-overlay .aa-Autocomplete svg.aa-SubmitIcon {
+  color: $muted;
+}
+
 // Short accent rule used under page titles.
 .accent-rule {
   height: 2px;
