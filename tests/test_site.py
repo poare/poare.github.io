@@ -152,6 +152,29 @@ def test_all_tabs_present_in_navbar(site):
         assert f">{tab}<" in navbar, f"navbar is missing the {tab} tab"
 
 
+def test_navbar_collapses_at_the_configured_breakpoint(site):
+    """The navbar must carry navbar-expand-md, not Quarto's default -lg.
+
+    Bootstrap folds the tabs into a hamburger below the named breakpoint.
+    Quarto defaults to `lg` (992px), but measurement showed the brand is
+    163px and the five tabs end at 504px, so they fit to roughly 576px —
+    the default hid them across a ~400px band where there was ample room,
+    and the hamburger's `order: 1` also pushed the brand 47px to the right,
+    which read as an unexplained indent.
+
+    This is pinned because `collapse-below` is one line of config with no
+    other visible effect: a Quarto upgrade that changed the default, or an
+    accidental deletion, would silently restore the old behaviour and only
+    be noticed by someone resizing a window.
+    """
+    navbar = extract_element(read_html(site, "index.html"), "navbar")
+    assert navbar, "no element with class 'navbar' found"
+    assert "navbar-expand-md" in navbar, (
+        "navbar is not set to collapse below the md breakpoint — check "
+        "`collapse-below: md` under navbar: in _quarto.yml"
+    )
+
+
 def test_tab_pages_are_generated(site):
     for relpath in ["about.html", "cv/index.html", "notes/index.html",
                     "blog/index.html", "contact.html"]:

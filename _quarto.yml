@@ -22,6 +22,13 @@ website:
   # artwork at assets/lqcd_icon.pdf changes.
   favicon: assets/favicon.png
   navbar:
+    # Quarto defaults to collapse-below: lg, i.e. the tabs fold into a
+    # hamburger below 992px -- far wider than they need. Measured: the brand
+    # is 163px and the five tabs end at 504px, so they fit comfortably to
+    # ~576px. `md` (768px) keeps them visible across most window sizes while
+    # leaving headroom for more tabs; `sm` would fit today's five but a sixth
+    # would leave ~7px of slack and a seventh would overflow.
+    collapse-below: md
     left:
       - text: "About"
         href: about.md
