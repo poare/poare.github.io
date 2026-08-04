@@ -43,3 +43,7 @@
 - slug: chiral-lagrangian-lattice
   source: physics/chiral_lagrangian_lattice/chiral_lagrangian_lattice.pdf
   topic: physics
+
+- slug: measure-theory
+  source: math/measure_theory/measure_theory.pdf
+  topic: math

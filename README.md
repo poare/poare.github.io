@@ -28,11 +28,8 @@ wrong Python.
   just `{{< pdf-note >}}`; the shortcode in `_extensions/pdf-note/` renders
   the accent rule, download button and inline viewer. Write any extra prose
   (errata, "supersedes the 2024 version") after the shortcode — re-running
-  the sync never touches an existing stub. `topic` must correspond to an
-  `id:` in the `listing:` block of `notes/index.md` — if this is the first
-  note for a new topic, add a listing section for it there too (copy the
-  `## Physics` / `:::{#physics}:::` pattern), or the note renders but never
-  appears on `/notes`.
+  the sync never touches an existing stub. `topic` must already exist as a
+  section on the notes page — see below if it does not.
 - **Top-level page** — `index.md` (home), `about.md`, `cv/index.md` and
   `contact.md` are plain Markdown; edit them directly. Keep the
   `page-layout: full` line in the front matter: it is what makes the left
@@ -40,6 +37,53 @@ wrong Python.
 - **Tab** — add two lines to the `navbar:` list in `_quarto.yml`.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
+
+## Adding a new notes topic
+
+A topic is a section on `/notes` with its own card grid — Physics and Math are
+the existing ones. Adding one (say `qft-recitations`) is **two edits to
+`notes/index.md`, both needed**, before you add any note to it.
+
+**1. A listing block** in the front matter, after the existing ones:
+
+```yaml
+  - id: qft-recitations
+    contents: qft-recitations
+    type: grid
+    sort: "title"
+    fields: [image, title, description, categories]
+    feed: false
+```
+
+**2. A heading and an empty div**, appended to the body:
+
+```markdown
+## QFT recitations
+
+:::{#qft-recitations}
+:::
+```
+
+Then add notes to it as usual: a `notes.yml` entry with `topic:
+qft-recitations`, and run the sync. It creates `notes/qft-recitations/` for
+you — you do not make the directory by hand.
+
+Things that will catch you out:
+
+- **The same string appears in four places** and they must match exactly: the
+  manifest's `topic:`, the listing's `id:` and `contents:`, and the div's
+  `{#...}`. It also becomes the directory name and part of the URL, so use
+  kebab-case.
+- **Use `##`, not `###`.** Sections are closed by a heading of equal or higher
+  level, so a `###` heading gets absorbed into the section above it and its
+  cards disappear into the previous topic. `test_notes_topic_listing_scoped_to_its_own_section`
+  fails if that happens.
+- **Both edits or neither.** With a listing but no heading, the cards render
+  in an unlabelled block; with a heading but no listing, you get a bare
+  heading with nothing under it. A `notes.yml` entry naming a topic with no
+  listing fails `test_manifest_topics_have_a_matching_notes_index_listing`.
+- **Section order on the page follows the `##` headings**, not the order of
+  the `listing:` blocks. Reorder the headings to reorder the page.
 
 ## Images
 

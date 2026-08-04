@@ -699,31 +699,49 @@ def test_note_thumbnail_is_generated_and_referenced(site):
 
 
 def test_notes_topic_listing_scoped_to_its_own_section(site):
-    """The 'Physics' listing must render as a child of its own heading's
-    <section> — and the intro prose above the heading must NOT be swallowed
-    into that same section. notes/index.md has the same shape that bit the
-    blog page in an earlier task (prose, then a heading, then a generated
-    listing div): Pandoc wraps everything after a heading into that
-    heading's <section> until a heading of equal-or-higher level closes it.
-    This page is designed to grow to many topics, each its own '## Heading'
-    followed by its own listing div, so a section that fails to close would
-    silently swallow every topic added after it.
+    """Every topic's listing must render inside its OWN heading's <section>,
+    and no topic may swallow another.
 
-    extract_element also raises directly if the id="physics" element's
-    markup never closes at all (unbalanced depth), which would itself mean
-    the section swallowed the rest of the document.
+    notes/index.md has the shape that bit the blog page in an earlier task
+    (prose, then a heading, then a generated listing div): Pandoc wraps
+    everything after a heading into that heading's <section> until a heading
+    of equal-or-higher level closes it. A section that fails to close would
+    silently reparent every topic added after it.
+
+    Topics come from the manifest rather than being hard-coded, so a new
+    topic is covered the day it is added. That matters: this guard was
+    written when only one topic existed, which meant its central claim —
+    that one topic cannot swallow the next — had nothing to actually
+    exercise it. The cross-topic assertion below is what closes that.
+
+    extract_element also raises directly if a topic's element never closes
+    at all (unbalanced depth), which would itself mean the section swallowed
+    the rest of the document.
     """
+    from scripts import sync_notes
+
+    topics = sorted({e["topic"] for e in sync_notes.load_manifest(sync_notes.MANIFEST)})
+    assert topics, "no topics in the manifest"
+
     html = read_html(site, "notes/index.html")
-    section = extract_element(html, "physics", by="id")
-    assert section, "no element with id 'physics' found"
-    assert 'id="listing-physics"' in section, (
-        "the topic listing is not nested inside its own topic's <section>"
-    )
-    assert "Write-ups, derivations" not in section, (
-        "the intro prose leaked into the topic section — the heading's "
-        "<section> did not close where expected, which would reparent any "
-        "topic added after this one"
-    )
+    for topic in topics:
+        section = extract_element(html, topic, by="id")
+        assert section, f"no element with id {topic!r} found on the notes index"
+        assert f'id="listing-{topic}"' in section, (
+            f"the {topic} listing is not nested inside its own topic's <section>"
+        )
+        assert "Write-ups, derivations" not in section, (
+            f"the intro prose leaked into the {topic} section — the heading's "
+            "<section> did not close where expected, which would reparent any "
+            "topic added after this one"
+        )
+        for other in topics:
+            if other != topic:
+                assert f'id="listing-{other}"' not in section, (
+                    f"the {other} listing rendered INSIDE the {topic} section — "
+                    f"{topic}'s heading did not close, so it swallowed the topic "
+                    "after it"
+                )
 
 
 def test_cv_download_link_resolves_to_a_real_file(site):

@@ -10,6 +10,12 @@ listing:
     sort: "title"
     fields: [image, title, description, categories]
     feed: false
+  - id: math
+    contents: math
+    type: grid
+    sort: "title"
+    fields: [image, title, description, categories]
+    feed: false
 ---
 
 ::: {.accent-rule}
@@ -20,4 +26,9 @@ Write-ups, derivations and lecture notes. Most are PDFs produced from LaTeX; eac
 ## Physics
 
 :::{#physics}
+:::
+
+## Math
+
+:::{#math}
 :::
