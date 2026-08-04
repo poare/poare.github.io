@@ -124,13 +124,16 @@ body {
   --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgb(#{red($accent)},#{green($accent)},#{blue($accent)})' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
-// A hairline border so the control still reads as a button, in the same
-// faded accent used for nav hover — quiet enough not to reintroduce the
-// pill-shaped chrome the underlined nav exists to avoid.
+// No border: three accent bars already read as a button, and Bootstrap's
+// default box would be the same pill-shaped chrome the underlined nav exists
+// to avoid. `border: 0` rather than a transparent colour so the box does not
+// still occupy layout.
 .navbar .navbar-toggler {
-  border-color: $accent-faded;
+  border: 0;
 }
 
+// The focus ring stays, and matters more now that the border is gone: it is
+// the only visible indication of keyboard focus on this control.
 .navbar .navbar-toggler:focus {
   box-shadow: 0 0 0 2px $accent-faded;
 }
@@ -145,11 +148,11 @@ body {
 // Overriding --bs-navbar-color does NOT reach it (tried, and the icon stayed
 // white); the selector has to be matched and out-weighted directly.
 //
-// $muted rather than $accent: this is a secondary control that sits in the bar
-// at every width, so it is coloured like an inactive nav link. The hamburger
-// is accent because it stands in for the whole nav when collapsed.
+// $accent, matching the hamburger: the two are the navbar's only icon
+// controls and sit side by side when collapsed, so colouring them alike reads
+// as one set rather than two unrelated marks.
 .navbar #quarto-search.type-overlay .aa-Autocomplete svg.aa-SubmitIcon {
-  color: $muted;
+  color: $accent;
 }
 
 // Short accent rule used under page titles.
