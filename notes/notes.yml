@@ -15,3 +15,7 @@
 - slug: collider-physics
   source: physics/collider_physics/collider_physics.pdf
   topic: physics
+
+- slug: hadron-structure
+  source: physics/hadron_structure/hadron_structure.pdf
+  topic: physics
