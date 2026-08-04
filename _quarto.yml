@@ -24,11 +24,15 @@ website:
   navbar:
     # Quarto defaults to collapse-below: lg, i.e. the tabs fold into a
     # hamburger below 992px -- far wider than they need. Measured: the brand
-    # is 163px and the five tabs end at 504px, so they fit comfortably to
-    # ~576px. `md` (768px) keeps them visible across most window sizes while
-    # leaving headroom for more tabs; `sm` would fit today's five but a sixth
-    # would leave ~7px of slack and a seventh would overflow.
-    collapse-below: md
+    # is 163px and the five tabs end at 504px, so they fit to ~576px, which
+    # is exactly the `sm` breakpoint. At `sm` the tabs stay visible on every
+    # window except phone-portrait.
+    #
+    # THIS IS SIZED FOR EXACTLY FIVE TABS. Each tab costs roughly 65px, so a
+    # sixth leaves only ~7px of slack at 576px and a seventh overflows into a
+    # broken navbar -- a worse failure than a hamburger. If you add a tab,
+    # change this to `md` at the same time.
+    collapse-below: sm
     left:
       - text: "About"
         href: about.md

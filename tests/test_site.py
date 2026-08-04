@@ -153,7 +153,7 @@ def test_all_tabs_present_in_navbar(site):
 
 
 def test_navbar_collapses_at_the_configured_breakpoint(site):
-    """The navbar must carry navbar-expand-md, not Quarto's default -lg.
+    """The navbar must carry navbar-expand-sm, not Quarto's default -lg.
 
     Bootstrap folds the tabs into a hamburger below the named breakpoint.
     Quarto defaults to `lg` (992px), but measurement showed the brand is
@@ -162,16 +162,29 @@ def test_navbar_collapses_at_the_configured_breakpoint(site):
     and the hamburger's `order: 1` also pushed the brand 47px to the right,
     which read as an unexplained indent.
 
-    This is pinned because `collapse-below` is one line of config with no
-    other visible effect: a Quarto upgrade that changed the default, or an
+    `sm` is 576px, which fits the current five tabs with ~72px to spare.
+    That margin is the reason TABS is asserted below: a sixth tab costs
+    about 65px, leaving ~7px, and a seventh would overflow into a broken
+    navbar. Adding a tab therefore means moving to `md` at the same time,
+    and this test is what makes that a failure rather than a surprise.
+
+    Pinned because `collapse-below` is one line of config with no other
+    visible effect: a Quarto upgrade that changed the default, or an
     accidental deletion, would silently restore the old behaviour and only
     be noticed by someone resizing a window.
     """
     navbar = extract_element(read_html(site, "index.html"), "navbar")
     assert navbar, "no element with class 'navbar' found"
-    assert "navbar-expand-md" in navbar, (
-        "navbar is not set to collapse below the md breakpoint — check "
-        "`collapse-below: md` under navbar: in _quarto.yml"
+    assert "navbar-expand-sm" in navbar, (
+        "navbar is not set to collapse below the sm breakpoint — check "
+        "`collapse-below: sm` under navbar: in _quarto.yml"
+    )
+    assert len(TABS) <= 5, (
+        f"the navbar now has {len(TABS)} tabs, but `collapse-below: sm` is "
+        "sized for five: the tabs end at 504px in a 576px viewport, and each "
+        "extra tab costs ~65px, so a sixth leaves ~7px of slack and a seventh "
+        "overflows. Change collapse-below to `md` in _quarto.yml and update "
+        "this test."
     )
 
 
