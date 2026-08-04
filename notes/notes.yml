@@ -19,3 +19,15 @@
 - slug: hadron-structure
   source: physics/hadron_structure/hadron_structure.pdf
   topic: physics
+
+- slug: instantons
+  source: physics/instantons/instantons.pdf
+  topic: physics
+
+- slug: lattice-renormalization
+  source: physics/lattice_operator_renormalization/lattice_operator_renormalization.pdf
+  topic: physics
+
+- slug: local-operator-renormalization
+  source: physics/local_operator_renorm/local_operator_renorm.pdf
+  topic: physics
