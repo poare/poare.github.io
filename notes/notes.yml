@@ -96,3 +96,57 @@
   source: math/moment_problem/moment_problem.pdf
   topic: math
 
+- slug: recitation-1
+  source: 8.323/recitation_1.pdf
+  topic: qft-i
+  order: 1
+
+- slug: recitation-2
+  source: 8.323/recitation_2.pdf
+  topic: qft-i
+  order: 2
+
+- slug: recitation-3
+  source: 8.323/recitation_3_no_contour.pdf
+  topic: qft-i
+  order: 3
+
+- slug: recitation-4
+  source: 8.323/recitation_4.pdf
+  topic: qft-i
+  order: 4
+
+- slug: recitation-5
+  source: 8.323/recitation_5.pdf
+  topic: qft-i
+  order: 5
+
+- slug: recitation-6
+  source: 8.323/recitation_6.pdf
+  topic: qft-i
+  order: 6
+
+- slug: recitation-7
+  source: 8.323/recitation_7.pdf
+  topic: qft-i
+  order: 7
+
+- slug: recitation-8
+  source: 8.323/recitation_8.pdf
+  topic: qft-i
+  order: 8
+
+- slug: recitation-9
+  source: 8.323/recitation_9.pdf
+  topic: qft-i
+  order: 9
+
+- slug: recitation-10
+  source: 8.323/recitation_10.pdf
+  topic: qft-i
+  order: 10
+
+- slug: recitation-11
+  source: 8.323/recitation_11.pdf
+  topic: qft-i
+  order: 11

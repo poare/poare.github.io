@@ -41,12 +41,18 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 REQUIRED_KEYS = {"slug", "source", "topic"}
 
+# `order` is optional and exists for numbered series: a listing sorted by
+# title puts "Recitation 10" between 1 and 2, because title sort is
+# alphabetical. Entries carrying it get it written into the stub's front
+# matter, and the topic's listing in notes/index.md sorts on it instead.
+OPTIONAL_KEYS = {"order"}
+
 STUB_TEMPLATE = """---
 title: "TITLE"
 description: "DESCRIPTION"
 categories: [{topic}]
 image: ../thumbs/{slug}.png
----
+{order_line}---
 
 {{{{< pdf-note >}}}}
 """
@@ -93,7 +99,7 @@ def load_manifest(path):
         missing = REQUIRED_KEYS - keys
         if missing:
             raise ManifestError(f"{where}: missing required key(s): {', '.join(sorted(missing))}")
-        unknown = keys - REQUIRED_KEYS
+        unknown = keys - REQUIRED_KEYS - OPTIONAL_KEYS
         if unknown:
             raise ManifestError(f"{where}: unknown key(s): {', '.join(sorted(unknown))}")
 
@@ -103,6 +109,14 @@ def load_manifest(path):
                 f"{where}: slug {slug!r} is not kebab-case "
                 "(lowercase letters, digits and single hyphens)"
             )
+        order = entry.get("order")
+        if order is not None and not isinstance(order, int):
+            raise ManifestError(
+                f"{where}: order {order!r} is not a whole number. It is used "
+                "to sort a topic's listing numerically, so a string would sort "
+                "alphabetically and defeat the point."
+            )
+
         if slug in seen:
             raise ManifestError(f"{where}: duplicate slug {slug!r}")
         seen.add(slug)
@@ -137,7 +151,7 @@ def load_manifest(path):
     return entries
 
 
-def scaffold_stub(stub_path, slug, topic):
+def scaffold_stub(stub_path, slug, topic, order=None):
     """Write a placeholder stub if none exists. Returns True if it wrote one.
 
     Never overwrites: an existing stub holds hand-written prose.
@@ -160,7 +174,11 @@ def scaffold_stub(stub_path, slug, topic):
     stub_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with open(stub_path, "x", encoding="utf-8") as handle:
-            handle.write(STUB_TEMPLATE.format(slug=slug, topic=topic))
+            handle.write(STUB_TEMPLATE.format(
+                slug=slug,
+                topic=topic,
+                order_line="" if order is None else f"order: {order}\n",
+            ))
     except FileExistsError:
         return False
     return True
@@ -208,7 +226,7 @@ def sync_entry(entry, root, force_thumbs=False):
     thumb = render_thumbnail(target_pdf, force=force_thumbs)
     lines.append(f"thumb  {slug}.png" if thumb else f"skip   {slug}.png (exists)")
 
-    if scaffold_stub(stub_path, slug, topic):
+    if scaffold_stub(stub_path, slug, topic, entry.get("order")):
         lines.append(f"stub   {stub_path.relative_to(REPO_ROOT)}  <- fill in TITLE and DESCRIPTION")
     else:
         lines.append(f"keep   {stub_path.relative_to(REPO_ROOT)} (already written)")

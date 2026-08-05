@@ -30,6 +30,12 @@ wrong Python.
   (errata, "supersedes the 2024 version") after the shortcode — re-running
   the sync never touches an existing stub. `topic` must already exist as a
   section on the notes page — see below if it does not.
+- **Note in a numbered series** — add `order: N` to the manifest entry as
+  well. The sync writes it into the stub's front matter, and the topic's
+  listing must use `sort: "order"` instead of `sort: "title"`. Without it a
+  title sort is alphabetical, so "Recitation 10" lands between 1 and 2. Every
+  entry in such a topic needs the field and the values must be unique; the
+  tests check both.
 - **Top-level page** — `index.md` (the home page, which is the biography),
   `research.md`, `cv/index.md` and `contact.md` are plain Markdown; edit them
   directly. There is no separate About tab: the home page serves that role and

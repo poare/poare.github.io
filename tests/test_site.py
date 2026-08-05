@@ -750,7 +750,16 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
     that one topic cannot swallow the next — had nothing to actually
     exercise it. The cross-topic assertion below is what closes that.
 
-    extract_element also raises directly if a topic's element never closes
+    Sections are located by the listing they contain, NOT by assuming the
+    section's id equals the topic name. Pandoc derives a heading's id from its
+    text, so that assumption held only while the headings happened to be
+    "Physics" and "Math". A perfectly valid descriptive heading — "QFT I
+    (8.323) Recitation Notes" — yields id "qft-i-8.323-recitation-notes" and
+    made this test fail on a page that rendered correctly. Heading text is
+    prose the author edits freely; keying a structural test to it produces
+    false alarms rather than caught defects.
+
+    extract_element also raises directly if a section's element never closes
     at all (unbalanced depth), which would itself mean the section swallowed
     the rest of the document.
     """
@@ -760,24 +769,37 @@ def test_notes_topic_listing_scoped_to_its_own_section(site):
     assert topics, "no topics in the manifest"
 
     html = read_html(site, "notes/index.html")
+    section_ids = re.findall(r'<section[^>]*\bid="([^"]+)"', html)
+    assert section_ids, "no <section> elements found on the notes index"
+
+    # topic -> the id of the section its listing rendered inside
+    home = {}
     for topic in topics:
-        section = extract_element(html, topic, by="id")
-        assert section, f"no element with id {topic!r} found on the notes index"
-        assert f'id="listing-{topic}"' in section, (
-            f"the {topic} listing is not nested inside its own topic's <section>"
+        for sid in section_ids:
+            if f'id="listing-{topic}"' in extract_element(html, sid, by="id"):
+                home[topic] = sid
+                break
+        assert topic in home, (
+            f"the {topic} listing is not inside any <section> — its heading is "
+            "missing from notes/index.md, or the listing div sits outside it"
         )
+
+    for topic, sid in home.items():
+        section = extract_element(html, sid, by="id")
         assert "Write-ups, derivations" not in section, (
             f"the intro prose leaked into the {topic} section — the heading's "
             "<section> did not close where expected, which would reparent any "
             "topic added after this one"
         )
-        for other in topics:
-            if other != topic:
-                assert f'id="listing-{other}"' not in section, (
-                    f"the {other} listing rendered INSIDE the {topic} section — "
-                    f"{topic}'s heading did not close, so it swallowed the topic "
-                    "after it"
-                )
+
+    # Two topics sharing a section means the first heading never closed.
+    for topic, sid in home.items():
+        others = [t for t, s in home.items() if s == sid and t != topic]
+        assert not others, (
+            f"the {others} listing(s) rendered INSIDE the same <section> as "
+            f"{topic} (id {sid!r}) — {topic}'s heading did not close, so it "
+            "swallowed the topic after it"
+        )
 
 
 def test_cv_download_link_resolves_to_a_real_file(site):
@@ -1248,6 +1270,96 @@ def test_manifest_rejects_a_bad_entry(tmp_path):
     with pytest.raises(sync_notes.ManifestError, match="kebab-case"):
         sync_notes.load_manifest(
             write("- slug: a-note\n  source: x.pdf\n  topic: Not_Kebab\n")
+        )
+
+
+def test_scaffold_writes_order_only_when_the_manifest_carries_one(tmp_path):
+    """`order` exists so a numbered series sorts numerically.
+
+    A listing sorted by title puts "Recitation 10" between 1 and 2, because
+    title sort is alphabetical. Entries that carry `order` get it written
+    into the stub's front matter for Quarto to sort on; entries that do not
+    must produce a stub with no stray `order:` line, since an empty or zero
+    value would sort them ahead of everything.
+    """
+    from scripts import sync_notes
+
+    numbered = tmp_path / "recitation-3.md"
+    assert sync_notes.scaffold_stub(numbered, "recitation-3", "qft-i", 3) is True
+    text = numbered.read_text(encoding="utf-8")
+    assert "\norder: 3\n" in text, "order was not written into the front matter"
+    assert text.index("order: 3") < text.index("---", text.index("image:")), (
+        "order: landed outside the front matter block"
+    )
+
+    plain = tmp_path / "measure-theory.md"
+    assert sync_notes.scaffold_stub(plain, "measure-theory", "math") is True
+    assert "order:" not in plain.read_text(encoding="utf-8"), (
+        "a stub with no manifest order should carry no order: line"
+    )
+
+
+def test_manifest_rejects_a_non_integer_order(tmp_path):
+    """order is sorted numerically, so a string would sort alphabetically and
+    silently defeat the whole point of the field.
+    """
+    from scripts import sync_notes
+
+    path = tmp_path / "notes.yml"
+    path.write_text(
+        "- slug: a-note\n  source: x.pdf\n  topic: qft-i\n  order: third\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(sync_notes.ManifestError, match="whole number"):
+        sync_notes.load_manifest(path)
+
+
+def test_ordered_topics_sort_numerically_in_their_listing():
+    """A topic whose manifest entries carry `order` must have its listing in
+    notes/index.md sorted on that field, not on title.
+
+    Getting one without the other is the failure this catches: the sync would
+    write order into every stub and the page would still show 1, 10, 11, 2.
+    """
+    import yaml
+
+    from scripts import sync_notes
+
+    entries = sync_notes.load_manifest(sync_notes.MANIFEST)
+    ordered_topics = {e["topic"] for e in entries if e.get("order") is not None}
+
+    front = (REPO_ROOT / "notes" / "index.md").read_text(encoding="utf-8")
+    block = front.split("---")[1]
+    listings = {l["id"]: l for l in yaml.safe_load(block)["listing"]}
+
+    for topic in sorted(ordered_topics):
+        assert topic in listings, f"no listing block for ordered topic {topic!r}"
+        assert listings[topic].get("sort") == "order", (
+            f"topic {topic!r} has manifest entries with `order`, but its listing "
+            f"sorts by {listings[topic].get('sort')!r} — a title sort puts "
+            '"Recitation 10" between 1 and 2'
+        )
+
+        # Every entry in an ordered topic needs the field. One missing entry
+        # sorts unpredictably against the rest and is easy to introduce by
+        # adding a twelfth recitation and forgetting the line. Found by
+        # mutation: removing `order` from a single entry passed until this
+        # assertion existed.
+        missing = sorted(
+            e["slug"] for e in entries
+            if e["topic"] == topic and e.get("order") is None
+        )
+        assert not missing, (
+            f"topic {topic!r} sorts by `order`, but these entries have none: "
+            f"{missing}. They will sort unpredictably against the rest — add "
+            "an order: line to each in notes/notes.yml"
+        )
+
+        orders = [e["order"] for e in entries if e["topic"] == topic]
+        dupes = sorted({o for o in orders if orders.count(o) > 1})
+        assert not dupes, (
+            f"topic {topic!r} has duplicate order value(s) {dupes} — their "
+            "relative position on the page would be arbitrary"
         )
 
 
