@@ -79,3 +79,23 @@
 - slug: diff-forms
   source: math/differential_forms/differential_forms.pdf
   topic: math
+
+- slug: metric-spaces
+  source: math/metric_spaces/metric_spaces.pdf
+  topic: math
+
+- slug: point-set
+  source: math/point_set_topology/point_set.pdf
+  topic: math
+
+- slug: probability
+  source: math/probability/probability.pdf
+  topic: math
+
+- slug: moment-problem
+  source: math/moment_problem/moment_problem.pdf
+  topic: math
+
+- slug: differential-geometry
+  source: math/differential_geometry/differential_geometry.pdf
+  topic: math
