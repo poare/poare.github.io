@@ -34,8 +34,8 @@ website:
     # change this to `md` at the same time.
     collapse-below: sm
     left:
-      - text: "About"
-        href: about.md
+      - text: "Research"
+        href: research.md
       - text: "CV"
         href: cv/index.md
       - text: "Notes"

@@ -141,7 +141,7 @@ def test_colours_are_variables_not_literals():
     assert offenders == [], f"hard-coded colours found in rules: {offenders}"
 
 
-TABS = ["About", "CV", "Notes", "Blog", "Contact"]
+TABS = ["Research", "CV", "Notes", "Blog", "Contact"]
 
 
 def test_all_tabs_present_in_navbar(site):
@@ -189,7 +189,7 @@ def test_navbar_collapses_at_the_configured_breakpoint(site):
 
 
 def test_tab_pages_are_generated(site):
-    for relpath in ["about.html", "cv/index.html", "notes/index.html",
+    for relpath in ["research.html", "cv/index.html", "notes/index.html",
                     "blog/index.html", "contact.html"]:
         assert (site / relpath).is_file(), f"{relpath} was not generated"
 
@@ -233,7 +233,7 @@ def test_contact_page_publishes_email_and_profiles(site):
 # layout. Kept together so a new tab is added to both halves at once.
 TOP_LEVEL_PAGES = {
     "index.md": "index.html",
-    "about.md": "about.html",
+    "research.md": "research.html",
     "cv/index.md": "cv/index.html",
     "notes/index.md": "notes/index.html",
     "blog/index.md": "blog/index.html",
@@ -357,15 +357,15 @@ def test_active_nav_link_markup_matches_theme_selector(site):
     underline could be entirely non-functional and every other test would
     still pass.
     """
-    navbar = extract_element(read_html(site, "about.html"), "navbar")
-    assert navbar, "no element with class 'navbar' found on about.html"
+    navbar = extract_element(read_html(site, "research.html"), "navbar")
+    assert navbar, "no element with class 'navbar' found on research.html"
     both_classes = re.compile(
         r'class="[^"]*(?:\bnav-link\b[^"]*\bactive\b|\bactive\b[^"]*\bnav-link\b)[^"]*"'
     )
     assert both_classes.search(navbar), (
         "no element inside the navbar carries both 'nav-link' and 'active' — "
         "the theme's underline selector does not match Quarto's markup. "
-        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/about.html"
+        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/research.html"
     )
 
 

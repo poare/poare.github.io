@@ -30,8 +30,10 @@ wrong Python.
   (errata, "supersedes the 2024 version") after the shortcode — re-running
   the sync never touches an existing stub. `topic` must already exist as a
   section on the notes page — see below if it does not.
-- **Top-level page** — `index.md` (home), `about.md`, `cv/index.md` and
-  `contact.md` are plain Markdown; edit them directly. Keep the
+- **Top-level page** — `index.md` (the home page, which is the biography),
+  `research.md`, `cv/index.md` and `contact.md` are plain Markdown; edit them
+  directly. There is no separate About tab: the home page serves that role and
+  is reached by clicking the site title. Keep the
   `page-layout: full` line in the front matter: it is what makes the left
   gutter match every other tab, and two tests enforce it.
 - **Tab** — add two lines to the `navbar:` list in `_quarto.yml`.
@@ -107,8 +109,8 @@ render.
 
 The leading slash matters. Quarto rewrites root-relative image paths per page
 depth on the way out, so the same line works from `index.md` and from a page
-two directories down. A sibling file next to `about.md` would also work, but
-it litters the repo root.
+two directories down. A sibling file next to `research.md` would also work,
+but it litters the repo root.
 
 The text in brackets is both the caption and the alt text for screen readers.
 Leave it empty (`![](…)`) for no caption. Size with `{width=70%}` or
