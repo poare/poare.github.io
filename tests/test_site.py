@@ -1362,6 +1362,26 @@ def test_ordered_topics_sort_numerically_in_their_listing():
             "relative position on the page would be arbitrary"
         )
 
+        # The stub is what Quarto actually sorts on; the manifest only feeds
+        # the scaffolder. These can disagree, and did: the recitation stubs
+        # were scaffolded before `order` existed, and scaffold_stub never
+        # overwrites an existing stub (by design — it holds hand-written
+        # prose), so re-running the sync does NOT add the field to them. The
+        # manifest and the listing config were both correct while every stub
+        # lacked the line, and this suite passed. Only asserting on the stubs
+        # closes that.
+        for entry in (e for e in entries if e["topic"] == topic):
+            stub = REPO_ROOT / "notes" / topic / f"{entry['slug']}.md"
+            assert stub.is_file(), f"{stub.relative_to(REPO_ROOT)} is missing"
+            front = stub.read_text(encoding="utf-8").split("---")[1]
+            declared = yaml.safe_load(front).get("order")
+            assert declared == entry["order"], (
+                f"{stub.relative_to(REPO_ROOT)} declares order {declared!r} but "
+                f"notes.yml says {entry['order']!r}. Re-running the sync will "
+                "NOT fix this — scaffold_stub never overwrites an existing "
+                "stub, so the field has to be corrected by hand."
+            )
+
 
 def test_sync_never_overwrites_an_existing_stub(tmp_path):
     """The property the whole design rests on. A stub holds hand-written
