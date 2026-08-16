@@ -4,11 +4,11 @@
 
 **Goal:** Let a blog post declare membership in an ordered series, so readers get a "Part 3 of …" banner, prev/next navigation, and a per-series landing page — with several series running in parallel.
 
-**Architecture:** A series is a directory under `blog/series/` whose `index.md` is hand-written and never overwritten. A post joins one by adding `series: <slug>` to its frontmatter and two `{{< include >}}` lines to its body. A Quarto pre-render script (`scripts/sync_series.py`) derives part order from post dates and writes the two included partials into each post's directory; those partials are gitignored and regenerated on every render. The series landing page and the Blog page's Series row are plain Quarto listings with no generated backing.
+**Architecture:** A series is a directory under `blog/series/` whose `index.md` is hand-written and never overwritten. A post joins one by adding `series: <slug>` to its frontmatter and two `{{< include >}}` lines to its body. `scripts/sync_series.py` derives part order from post dates and writes the two included partials into each post's directory. Those partials are COMMITTED, and the script is run by hand: Quarto expands includes while scanning the project, before pre-render scripts run, so a generated-at-build-time partial does not exist when its include is resolved and a fresh clone cannot render. `test_series_partials_are_up_to_date` fails if the script was not re-run. The series landing page and the Blog page's Series row are plain Quarto listings with no generated backing.
 
 **Tech Stack:** Quarto 1.10.18, Python 3.12 + PyYAML (already in `requirements.txt`), pytest, SCSS.
 
-**Spec:** `docs/superpowers/specs/2026-08-16-blog-series-design.md`
+**Spec:** `_docs/specs/2026-08-16-blog-series-design.md`
 
 ## Global Constraints
 
