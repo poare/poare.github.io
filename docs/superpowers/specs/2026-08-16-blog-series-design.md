@@ -78,10 +78,15 @@ If `include:` proves not to filter on custom fields, the fallback is
 generated partial. The landing-page test below distinguishes these cases
 immediately, so the fallback is a known, tested branch rather than a surprise.
 
-The page follows the stub convention already established by
-`scripts/sync_notes.py`: scaffolded once if absent, **never overwritten**,
-removed by `git rm`. It holds hand-written prose, and a config-driven overwrite
-is how a typo'd slug silently destroys it.
+The page is created by hand and **never written to by any script**, following
+the spirit of the stub convention in `scripts/sync_notes.py`: it holds
+hand-written prose, and a config-driven overwrite is how a typo'd slug silently
+destroys it. Taking a series down is a `git rm`.
+
+Nothing scaffolds it. A post naming a series with no landing page is an error
+(below), and a script that answered the same situation by silently creating a
+page would defeat that check: a typo'd slug would produce a plausible-looking
+empty series rather than a message naming the mistake.
 
 ### Post frontmatter
 
