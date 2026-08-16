@@ -1412,8 +1412,30 @@ git commit -m "feat: keep the series row to one scrollable row with arrows"
 ## Done when
 
 - `pytest` passes in full.
-- `quarto render` succeeds from a clean checkout with no `_series-*.md` files present.
+- `quarto render` succeeds from a fresh `git clone`, which requires the
+  `_series-*.md` partials to be **committed**. (This bullet originally said
+  the opposite -- that the render must work with no partials present. That
+  was written before the include-ordering constraint was discovered, and is
+  exactly the thing Quarto cannot do.)
 - The Blog page shows a Series row above the full post grid.
 - The Series row occupies exactly one row at every window width, scrolling
   sideways with arrows once the cards overflow.
 - Each series post shows its part number and links to its neighbours and its series page.
+
+---
+
+## Follow-ups
+
+Not part of this plan; recorded here so they are not lost.
+
+- [ ] **Give each series its own thumbnail.** Neither landing page sets
+  `image:` yet -- the line is commented out pending artwork -- and the two
+  cards consequently do not match. Arithmetic renders text-only, while
+  Standard Model shows a figure Quarto scraped out of the rendered page:
+  the residual-convergence plot belonging to the UV-catastrophe post's own
+  listing card. Nothing is broken, but a plot from *inside* one part is
+  standing in for the whole series, and it will change on its own if a post
+  is added or re-dated ahead of that one. Fix by adding `thumb.png` to each
+  directory under `blog/series/` and uncommenting `image:`, then pin each
+  card to its own series' image with a test -- there is no point writing
+  that test while the answer is "whatever Quarto found".
