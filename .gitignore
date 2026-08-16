@@ -15,10 +15,6 @@ __pycache__/
 # directory at the repo root.
 blog/posts/**/index_files/
 
-# Series banner and prev/next navigation, regenerated from post front
-# matter by scripts/sync_series.py on every render.
-blog/posts/**/_series-*.md
-
 # Ephemeral test fixture: created by the `site` pytest fixture before
 # rendering (to exercise the `resources:` key on an unreferenced file) and
 # deleted again afterwards. Never intended to be tracked or shipped.

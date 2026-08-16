@@ -158,7 +158,7 @@ def test_write_partials_creates_both_files(tree):
 def test_write_partials_removes_stale_files_from_a_post_that_left_its_series(tree):
     """A post dropping its `series:` key must lose its partials, or the
     include directives it still carries would render last render's
-    navigation forever -- and being gitignored, nothing else would notice.
+    navigation forever.
     """
     solo = tree / "blog" / "posts" / "2026-08-21-solo"
     (solo / "_series-nav.md").write_text("stale\n", encoding="utf-8")
@@ -191,3 +191,62 @@ def test_main_exits_zero_on_a_healthy_tree(tree, monkeypatch):
     monkeypatch.setattr("scripts.sync_series.POSTS_DIR", tree / "blog" / "posts")
     monkeypatch.setattr("scripts.sync_series.SERIES_DIR", tree / "blog" / "series")
     assert main([]) == 0
+
+
+def test_series_partials_are_up_to_date():
+    """The committed partials must match what the generator would write now.
+
+    They have to be committed rather than generated at build time: Quarto
+    expands {{< include >}} while scanning the project, before pre-render
+    scripts run, so a partial that does not already exist on disk fails the
+    render outright. Committing them buys a working fresh clone at the cost
+    of a file that can fall out of date -- adding a post shifts the part
+    numbers of everything after it, and nothing else in the suite would
+    notice the neighbouring posts still claiming the old ones.
+
+    So this is the guard that makes the manual step safe: it recomputes
+    every partial in memory (writing nothing) and compares. If it fails,
+    run `python scripts/sync_series.py` and commit the result.
+    """
+    from scripts.sync_series import (
+        BANNER_NAME,
+        NAV_NAME,
+        POSTS_DIR,
+        SERIES_DIR,
+    )
+
+    posts = collect_posts(POSTS_DIR)
+    series_meta = load_series(SERIES_DIR)
+    grouped = group_parts(posts, series_meta)
+
+    in_a_series = set()
+    for series_slug, parts in grouped.items():
+        for index, post in enumerate(parts):
+            in_a_series.add(post["slug"])
+            directory = post["path"].parent
+            expected = {
+                BANNER_NAME: banner_markdown(
+                    index + 1, series_slug, series_meta[series_slug]["title"]
+                ),
+                NAV_NAME: nav_markdown(parts, index, series_slug),
+            }
+            for name, want in expected.items():
+                path = directory / name
+                assert path.is_file(), (
+                    f"{post['slug']}/{name} is missing -- "
+                    "run `python scripts/sync_series.py` and commit the result"
+                )
+                assert path.read_text(encoding="utf-8") == want, (
+                    f"{post['slug']}/{name} is out of date -- "
+                    "run `python scripts/sync_series.py` and commit the result"
+                )
+
+    for post in posts:
+        if post["slug"] in in_a_series:
+            continue
+        for name in (BANNER_NAME, NAV_NAME):
+            stale = post["path"].parent / name
+            assert not stale.is_file(), (
+                f"{post['slug']} is not in a series but still has {name} -- "
+                "run `python scripts/sync_series.py` and commit the result"
+            )

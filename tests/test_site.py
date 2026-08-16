@@ -953,23 +953,22 @@ def test_freeze_cache_is_committed():
     )
 
 
-def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
-    """Render the whole project again with every jupyter lookup on PATH
-    shadowed by a shim that fails loudly. If quarto still produces the
-    figure, and the shim never fires, the figure can only have come from
-    the committed _freeze/ cache, not from re-executing the notebook.
+def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
+    """Render the whole project again with every python3/python/jupyter
+    lookup on PATH shadowed by a shim that fails loudly. If quarto still
+    produces the figure, and the shim never fires, the figure can only have
+    come from the committed _freeze/ cache, not from re-executing the
+    notebook -- the guarantee the deploy workflow depends on, since it
+    renders with no Python environment of its own.
 
-    This used to shim python3 and python as well, on the stronger claim
-    that a render needs no Python at all. That claim died with
-    scripts/sync_series.py: it is a Python pre-render script, so every
-    render now invokes python3 before Quarto touches a single page, and
-    shimming it would fail this test on the pre-render step without ever
-    reaching the question the test exists to ask. CI installs Python for
-    that script and deliberately still installs no Jupyter, so Jupyter is
-    the thing whose absence has to be proven survivable -- and it is the
-    only one of the three that could re-execute a notebook.
+    scripts/sync_series.py is Python, but it is deliberately NOT wired into
+    the render (see _quarto.yml): its output is committed, so a render
+    never invokes it. That is what keeps this stronger three-shim form
+    honest. CI runs the script only to verify the committed partials are
+    current; if that check ever moves into the render itself, this test
+    will fail on the python3 shim and should not simply be weakened.
 
-    We use a shim rather than a stripped-down PATH. An earlier version of
+    We use shims rather than a stripped-down PATH. An earlier version of
     this test built a "hostile" PATH by symlinking every entry of /usr/bin
     except python3/pip3, plus a few hard-coded system directories, into a
     staging directory. That approach silently depends on the filesystem
@@ -983,10 +982,10 @@ def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
     has already deleted a test for exactly that fault.
 
     Shims sidestep the whole problem, because they depend on no directory
-    layout at all: we prepend one directory containing an executable
-    stand-in named jupyter to PATH, ahead of everything already there.
-    PATH shadowing works identically on macOS and Linux, so the shim
-    directory hides the real Jupyter entry point
+    layout at all: we prepend one directory containing executable
+    stand-ins named python3, python and jupyter to PATH, ahead of
+    everything already there. PATH shadowing works identically on macOS
+    and Linux, so the shim directory hides real Python entry points
     without removing or symlinking a single thing from the rest of PATH --
     coreutils and quarto's own launcher are untouched on any platform.
 
@@ -1009,9 +1008,9 @@ def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
     assert quarto_bin, "quarto not found on PATH"
 
     marker = "FREEZE-SHIM-INVOKED"
-    shim_dir = tmp_path / "jupyter-shim"
+    shim_dir = tmp_path / "python-shim"
     shim_dir.mkdir()
-    for name in ("jupyter",):
+    for name in ("python3", "python", "jupyter"):
         shim = shim_dir / name
         shim.write_text(
             "#!/bin/sh\n"
@@ -1045,11 +1044,11 @@ def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
             env=env,
         )
         assert result.returncode == 0, (
-            "quarto render failed with a shimmed Jupyter on PATH -- the freeze "
+            "quarto render failed with a shimmed Python on PATH -- the freeze "
             f"cache was not reused:\n{result.stdout}\n{result.stderr}"
         )
         assert marker not in result.stdout and marker not in result.stderr, (
-            "quarto invoked the jupyter shim -- it re-executed the "
+            "quarto invoked a python3/python/jupyter shim -- it re-executed the "
             f"notebook instead of reusing the freeze cache:\n"
             f"{result.stdout}\n{result.stderr}"
         )
@@ -1060,7 +1059,7 @@ def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
         )
         html = rendered.read_text(encoding="utf-8")
         assert "<img" in html or "data:image/png" in html, (
-            "figure missing after a Jupyter-free render"
+            "figure missing after a Python-free render"
         )
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
