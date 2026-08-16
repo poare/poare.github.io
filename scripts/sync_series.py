@@ -168,20 +168,35 @@ def nav_markdown(parts, index, series_slug):
 
     The prev link is omitted on the first part and the next on the last:
     a link reading "Part 0" is worse than no link at all.
+
+    Each link goes in its OWN fenced div, separated by a blank line. Joining
+    them into one line instead -- which is what this did first -- produces a
+    single <p> holding all three, and a single child makes the container's
+    `justify-content` inert: the styles all apply and nothing moves. The
+    three wrappers are what theme.scss places in its three grid columns, so
+    a missing prev or next leaves the others where they were.
     """
-    links = []
+    blocks = []
     if index > 0:
         previous = parts[index - 1]
-        links.append(
-            f"[← Part {index}: {previous['title']}]({_post_href(previous)})"
+        blocks.append(
+            "::: {.series-prev}\n"
+            f"[← Part {index}: {previous['title']}]({_post_href(previous)})\n"
+            ":::"
         )
-    links.append(f"[All parts]({_series_href(series_slug)})")
+    blocks.append(
+        "::: {.series-index}\n"
+        f"[All parts]({_series_href(series_slug)})\n"
+        ":::"
+    )
     if index < len(parts) - 1:
         following = parts[index + 1]
-        links.append(
-            f"[Part {index + 2}: {following['title']} →]({_post_href(following)})"
+        blocks.append(
+            "::: {.series-next}\n"
+            f"[Part {index + 2}: {following['title']} →]({_post_href(following)})\n"
+            ":::"
         )
-    return "::: {.series-nav}\n" + " · ".join(links) + "\n:::\n"
+    return "::: {.series-nav}\n" + "\n\n".join(blocks) + "\n:::\n"
 
 
 def _write_if_changed(path, text):

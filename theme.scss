@@ -191,15 +191,48 @@ body {
 
 // Series navigation: the prev / index / next footer. The rule above it
 // separates navigation from prose; without one the links read as a final
-// sentence of the post. Wraps rather than squeezing, since three long part
-// titles will not fit one line on a phone.
+// sentence of the post.
+//
+// Grid with three explicit columns, not flex with space-between. Under flex
+// the first and last parts -- which have only two links, not three -- would
+// push "All parts" to whichever end was free, so the index link would sit
+// in a different place on almost every page of a series. Naming the column
+// each link belongs to holds all three still whether or not its neighbours
+// exist.
 .series-nav {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   gap: 0.5rem 1.5rem;
-  justify-content: space-between;
+  align-items: baseline;
   border-top: 1px solid $rule;
   margin-top: 3rem;
   padding-top: 1rem;
   font-size: 0.9rem;
+
+  // Pandoc wraps each link in a <p>, whose bottom margin would otherwise
+  // show up as dead space under a one-line footer.
+  p {
+    margin: 0;
+  }
+}
+
+.series-prev  { grid-column: 1; justify-self: start; }
+.series-index { grid-column: 2; justify-self: center; }
+.series-next  { grid-column: 3; justify-self: end; text-align: right; }
+
+// Three part titles side by side do not fit a phone. Stack them in reading
+// order instead, all left-aligned. 576px is the same breakpoint the navbar
+// collapses at, so the layout changes once rather than twice on the way down.
+@media (max-width: 576px) {
+  .series-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .series-prev,
+  .series-index,
+  .series-next {
+    grid-column: 1;
+    justify-self: start;
+    text-align: left;
+  }
 }

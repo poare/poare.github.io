@@ -1951,3 +1951,58 @@ def test_ci_checks_series_staleness_before_rendering():
     render = next(i for i, name in enumerate(names) if name == "Render the site")
     assert check < render, f"the staleness check must precede the render; got {names}"
     assert "sync_series.py" in steps[check]["run"]
+
+
+@pytest.mark.parametrize("slug", sorted(SERIES_POSTS))
+def test_series_nav_links_are_separately_positioned(site, slug):
+    """Each nav link must render in its own wrapper.
+
+    The first version emitted all three joined by middots on one line,
+    which Pandoc turned into a single <p>. Every style still applied and
+    nothing looked broken in the CSS, but a container with one child has
+    nothing to distribute, so the prev/index/next placement was silently
+    inert. Only the rendered structure shows that.
+    """
+    partial = (REPO_ROOT / "blog" / "posts" / slug / "_series-nav.md").read_text(
+        encoding="utf-8"
+    )
+    expected = len(re.findall(r"\[[^\]]+\]\([^)]+\)", partial))
+    nav = extract_element(_post_html(site, slug), "series-nav")
+    wrappers = re.findall(r'class="series-(prev|index|next)"', nav)
+    assert len(wrappers) == expected, (
+        f"{slug} nav has {expected} links but rendered {wrappers} wrappers -- "
+        "the links are not separately positioned"
+    )
+
+
+@pytest.mark.parametrize("slug", sorted(SERIES_POSTS))
+def test_rendered_nav_matches_the_committed_partial(site, slug):
+    """What the page shows must match what the generator wrote.
+
+    This exists because of a hole the other tests could not see. Quarto's
+    freeze cache stores each executed page's markdown *after* includes are
+    expanded, and its hash covers only the .qmd source -- so editing a
+    partial does not invalidate it. A frozen post therefore keeps serving
+    the navigation from whenever its code last ran, and neither
+    test_series_partials_are_up_to_date nor the CI staleness check would
+    notice, because both look at the files on disk, which are correct.
+
+    Specifically it catches a stale freeze whose link TEXT has drifted --
+    the common case, since inserting a post mid-series renumbers every part
+    after it and changes who each post's neighbours are. Drift that leaves
+    the text identical but changes the markup is caught by
+    test_series_nav_links_are_separately_positioned instead; the two are
+    complementary and neither subsumes the other.
+
+    If this fails on a .qmd, delete that post's directory under _freeze/,
+    re-render locally, and commit the refreshed cache.
+    """
+    partial = (REPO_ROOT / "blog" / "posts" / slug / "_series-nav.md").read_text(
+        encoding="utf-8"
+    )
+    nav = extract_element(_post_html(site, slug), "series-nav")
+    for text, _href in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", partial):
+        assert text in nav, (
+            f"{slug} was generated with the link {text!r}, but the rendered "
+            f"page does not show it -- stale _freeze cache?"
+        )
