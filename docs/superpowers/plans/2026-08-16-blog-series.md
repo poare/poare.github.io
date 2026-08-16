@@ -999,7 +999,7 @@ git commit -m "style: series banner and prev/next navigation"
 ### Task 6: CI and documentation
 
 **Files:**
-- Modify: `.github/workflows/publish.yml` (confirm the exact filename with `ls .github/workflows`)
+- Modify: `.github/workflows/publish.yml`
 - Modify: `README.md`
 
 **Interfaces:**
