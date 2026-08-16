@@ -110,6 +110,13 @@ quarto render
 
 `test_rendered_nav_matches_the_committed_partial` fails if you forget.
 
+**The Series row on the blog page is always exactly one row.** Once there are
+more cards than fit, it scrolls sideways and arrow buttons appear at its ends;
+below that threshold it looks like an ordinary grid and no controls are shown.
+The arrows come from `assets/series-row.html`, which `blog/index.md` loads on
+its own — it is the only page that needs it, and the script no-ops on any page
+without a Series row.
+
 **Why those files are committed rather than generated at build time:** Quarto
 expands `{{< include >}}` while scanning the project to build its file list,
 and that scan runs *before* pre-render scripts do. A partial that does not

@@ -1,0 +1,63 @@
+<script>
+// Scroll arrows for the Series row on the blog page. That row is a single
+// non-wrapping strip (see theme.scss) whose native scrollbar is hidden, so
+// these buttons are how it gets moved.
+//
+// Inert unless #listing-series is on the page, so loading it anywhere else
+// does nothing rather than throwing.
+(function seriesScroller() {
+  function init() {
+    var listing = document.getElementById("listing-series");
+    if (!listing) return;
+    var strip = listing.querySelector(".list.grid");
+    if (!strip) return;
+
+    // Scrollable by keyboard, not only by clicking the arrows.
+    strip.setAttribute("tabindex", "0");
+    strip.setAttribute("role", "region");
+    strip.setAttribute("aria-label", "Series");
+
+    var buttons = {};
+    ["left", "right"].forEach(function (side) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "series-scroll series-scroll-" + side;
+      button.setAttribute("aria-label", "Scroll series " + side);
+      button.innerHTML = side === "left" ? "&#8249;" : "&#8250;";
+      button.addEventListener("click", function () {
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        strip.scrollBy({
+          left: (side === "left" ? -1 : 1) * strip.clientWidth * 0.8,
+          behavior: reduce ? "auto" : "smooth"
+        });
+      });
+      listing.appendChild(button);
+      buttons[side] = button;
+    });
+
+    function update() {
+      // The 1px tolerance matters: fractional layout widths mean scrollLeft
+      // rarely equals scrollWidth - clientWidth exactly, which would leave
+      // the right arrow showing at the end of the strip forever.
+      var maxScroll = strip.scrollWidth - strip.clientWidth;
+      buttons.left.hidden = strip.scrollLeft <= 1;
+      buttons.right.hidden = strip.scrollLeft >= maxScroll - 1;
+    }
+
+    strip.addEventListener("scroll", update);
+    // The strip can start overflowing purely because the window narrowed,
+    // so a scroll listener alone would leave the arrows in the wrong state.
+    if (window.ResizeObserver) {
+      new ResizeObserver(update).observe(strip);
+    }
+    window.addEventListener("resize", update);
+    update();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>

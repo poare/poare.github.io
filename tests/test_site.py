@@ -2006,3 +2006,43 @@ def test_rendered_nav_matches_the_committed_partial(site, slug):
             f"{slug} was generated with the link {text!r}, but the rendered "
             f"page does not show it -- stale _freeze cache?"
         )
+
+
+def test_series_row_never_wraps(site):
+    """The Series row is an index above the real content. If it wrapped, it
+    would grow downward and push the post grid off the screen as series
+    accumulate -- which is exactly what Quarto's grid listing does by
+    default, so this override has to be asserted rather than assumed.
+    """
+    rules = re.findall(r"#listing-series[^{}]*\{[^{}]*\}", _all_css(site))
+    assert rules, "no #listing-series rule in the compiled CSS"
+    joined = " ".join(rules)
+    assert "nowrap" in joined
+    assert "overflow-x" in joined
+
+
+def test_scroll_arrows_are_styled(site):
+    assert ".series-scroll" in _all_css(site)
+
+
+def test_scroller_script_is_scoped_to_the_blog_page(site):
+    """The script belongs to the one page with a Series row. Loading it
+    site-wide would be harmless -- it no-ops without #listing-series -- but
+    page-level inclusion is the claim being made here, and a site-wide
+    include would quietly ship dead code on every page.
+    """
+    assert "seriesScroller" in read_html(site, "blog/index.html")
+    assert "seriesScroller" not in _post_html(site, "2026-08-18-arithmetic")
+
+
+def test_blog_page_keeps_project_format_settings(site):
+    """blog/index.md now sets `format: html: include-after-body`. Quarto is
+    expected to merge that with the project-level format block rather than
+    replace it; if it replaced it, this one page would silently lose its
+    theme and favicon while every other page kept them.
+    """
+    html_text = read_html(site, "blog/index.html")
+    assert "favicon" in html_text
+    assert re.search(r'<link[^>]+rel="stylesheet"', html_text), (
+        "blog page has no stylesheet link -- project format settings were lost"
+    )

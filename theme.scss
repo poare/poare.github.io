@@ -236,3 +236,70 @@ body {
     text-align: left;
   }
 }
+
+// The Series row on the blog page is exactly one row, always. Quarto renders
+// a grid listing as a CSS grid that wraps onto further rows as cards
+// accumulate, which would push the post grid down the page as the number of
+// series grows. This makes it a single strip that scrolls sideways instead;
+// the arrows come from assets/series-row.html.
+#listing-series {
+  position: relative;
+
+  .list.grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    gap: 1rem;
+    // The arrows are the affordance. A native horizontal scrollbar under the
+    // cards is noise, and on macOS it is invisible until scrolled anyway.
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // Quarto emits one .g-col-1 wrapper per card. Flex children shrink by
+  // default, so without an explicit basis the cards would compress to fit
+  // instead of overflowing -- and nothing would ever scroll.
+  .g-col-1 {
+    flex: 0 0 clamp(210px, 30%, 320px);
+    scroll-snap-align: start;
+  }
+}
+
+// Scroll arrows. Hidden by the script unless the strip actually overflows, so
+// with only a couple of series the row is indistinguishable from a plain grid
+// and no controls appear until they are needed.
+//
+// $paper rather than a white literal: the buttons overlap the cards, so they
+// need an opaque fill, and every colour on this site comes from the palette.
+.series-scroll {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid $rule;
+  border-radius: 50%;
+  background: $paper;
+  color: $accent;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px $accent-faded;
+  }
+}
+
+.series-scroll-left {
+  left: -0.75rem;
+}
+
+.series-scroll-right {
+  right: -0.75rem;
+}

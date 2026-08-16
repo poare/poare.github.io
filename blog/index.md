@@ -25,6 +25,13 @@ listing:
     # grey `.listing-item-img-placeholder` rather than reserving dead space.
     fields: [image, date, title, categories, description]
     feed: false
+format:
+  html:
+    # Scroll arrows for the Series row. Page-level rather than site-wide:
+    # this is the only page with a Series row. Quarto merges this with the
+    # project-level format block, so the theme and favicon still apply --
+    # test_blog_page_keeps_project_format_settings guards that.
+    include-after-body: ../assets/series-row.html
 ---
 
 ::: {.accent-rule}
