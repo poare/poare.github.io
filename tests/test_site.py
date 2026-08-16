@@ -1804,3 +1804,84 @@ def test_font_licence_is_served_with_the_fonts(site):
         "resources entry in _quarto.yml"
     )
     assert "Reserved Font Name" in served.read_text(encoding="utf-8")
+
+
+# Every post that declares a series, and the series it belongs to. Kept
+# explicit rather than derived from the front matter, so a test failure
+# means the site is wrong -- a test that reads the same source the
+# generator reads would agree with any mistake the generator made.
+SERIES_POSTS = {
+    "2026-08-17-standard-model-history": ("standard-model", 1),
+    "2026-08-18-uv-catastrophe": ("standard-model", 2),
+    "2026-08-18-arithmetic": ("arithmetic", 1),
+}
+
+
+def _post_html(site, slug):
+    return read_html(site, f"blog/posts/{slug}/index.html")
+
+
+@pytest.mark.parametrize("slug,expected", sorted(SERIES_POSTS.items()))
+def test_series_post_shows_its_banner(site, slug, expected):
+    series_slug, part = expected
+    banner = extract_element(_post_html(site, slug), "series-banner")
+    assert banner, f"{slug} has no .series-banner block"
+    assert f"Part {part} of" in banner
+    assert f"series/{series_slug}/" in banner
+
+
+@pytest.mark.parametrize("slug", sorted(SERIES_POSTS))
+def test_series_nav_links_resolve(site, slug):
+    """Every link in the nav must point at a file that exists in _site.
+
+    This is also what catches the source-path convention failing: if
+    Quarto stops rewriting `/blog/.../index.md` to a relative `.html`, the
+    hrefs here still say `.md` and resolve to nothing.
+    """
+    nav = extract_element(_post_html(site, slug), "series-nav")
+    assert nav, f"{slug} has no .series-nav block"
+    hrefs = re.findall(r'href="([^"]+)"', nav)
+    assert hrefs, f"{slug} nav contains no links"
+    page_dir = (site / "blog" / "posts" / slug)
+    for href in hrefs:
+        target = (page_dir / href).resolve()
+        if target.is_dir():
+            target = target / "index.html"
+        assert target.is_file(), f"{slug} nav links to {href}, which does not exist"
+
+
+def test_first_part_has_no_previous_link(site):
+    nav = extract_element(_post_html(site, "2026-08-17-standard-model-history"),
+                          "series-nav")
+    assert "←" not in nav
+    assert "→" in nav
+
+
+def test_last_part_has_no_next_link(site):
+    nav = extract_element(_post_html(site, "2026-08-18-uv-catastrophe"), "series-nav")
+    assert "→" not in nav
+    assert "←" in nav
+
+
+def test_frozen_qmd_post_still_gets_current_navigation(site):
+    """The .qmd post's execution is cached in _freeze/. That cache holds
+    computed output; this proves it does not also serve stale navigation,
+    which would leave the post's part number frozen at whatever it was the
+    last time its Python ran.
+    """
+    banner = extract_element(_post_html(site, "2026-08-18-uv-catastrophe"),
+                             "series-banner")
+    assert "Part 2 of" in banner
+
+
+@pytest.mark.parametrize("series_slug", ["arithmetic", "standard-model"])
+def test_series_page_lists_exactly_its_own_posts(site, series_slug):
+    """The listing must match the posts tagged with this series -- no more,
+    no fewer. A filter that silently matches nothing, or everything, still
+    renders a perfectly valid page, so only an exact comparison catches it.
+    """
+    html_text = read_html(site, f"blog/series/{series_slug}/index.html")
+    linked = set(re.findall(r'href="[^"]*posts/([^/"]+)/', html_text))
+    expected = {slug for slug, (series, _) in SERIES_POSTS.items()
+                if series == series_slug}
+    assert linked == expected

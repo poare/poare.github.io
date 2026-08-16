@@ -1,8 +1,11 @@
 ---
-title: "Convergence of a Krylov solver"
-date: 2026-08-02
-categories: [solvers, python]
+title: "The Ultraviolet Catastrophe"
+date: 2026-08-18
+categories: [physics, standard-model]
+series: standard-model
 ---
+
+{{< include _series-banner.md >}}
 
 A quick demonstration that executable code works on this site. The residual of
 a Krylov method typically falls geometrically until it stagnates.
@@ -31,3 +34,5 @@ plt.show()
 ```
 
 The figure above was generated when this page was rendered, not pasted in.
+
+{{< include _series-nav.md >}}
