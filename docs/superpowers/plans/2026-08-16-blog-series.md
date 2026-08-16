@@ -932,14 +932,23 @@ git commit -m "feat: show a series row on the blog page"
 Append to `tests/test_site.py`:
 
 ```python
+def _all_css(site):
+    """Every stylesheet in the built site, concatenated.
+
+    theme.scss is compiled into a hashed bootstrap bundle whose filename
+    changes whenever the theme does, so a test cannot name the file it
+    needs to read.
+    """
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore")
+                     for path in sorted(site.rglob("*.css")))
+
+
 def test_series_classes_are_styled(site):
     """An unstyled .series-nav still renders -- as an undifferentiated line
     of links with no rule above it -- so nothing else in the suite would
     notice the styles being dropped from theme.scss.
     """
-    css_files = list((site / "site_libs").rglob("*.css")) + list(site.rglob("*.css"))
-    combined = "\n".join(path.read_text(encoding="utf-8", errors="ignore")
-                         for path in css_files)
+    combined = _all_css(site)
     assert ".series-banner" in combined
     assert ".series-nav" in combined
 ```
@@ -1104,9 +1113,302 @@ git commit -m "ci: install python for the series pre-render script; document ser
 
 ---
 
+### Task 7: Keep the Series row to exactly one row
+
+Quarto renders a grid listing as `#listing-series > .list.grid > .g-col-1`,
+where `.list.grid` is a CSS grid that wraps onto further rows as cards
+accumulate — which would push the post grid down the page as series build up.
+This overrides it to a single horizontal strip that scrolls, with arrows that
+appear only when it actually overflows.
+
+Depends on Task 4 (the Series row must exist). Nothing depends on this task.
+
+**Files:**
+- Create: `assets/series-row.html`
+- Modify: `theme.scss` (append)
+- Modify: `blog/index.md` (frontmatter)
+- Modify: `tests/test_site.py` (append)
+- Modify: `README.md` (the Blog series section from Task 6)
+
+**Interfaces:**
+- Consumes: the `#listing-series` element rendered by Task 4, and `_all_css(site)` from Task 5.
+- Produces: nothing.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `tests/test_site.py`:
+
+```python
+def test_series_row_never_wraps(site):
+    """The Series row is an index above the real content. If it wrapped, it
+    would grow downward and push the post grid off the screen as series
+    accumulate -- which is exactly what Quarto's grid listing does by
+    default, so this override has to be asserted rather than assumed.
+    """
+    rules = re.findall(r"#listing-series[^{}]*\{[^{}]*\}", _all_css(site))
+    assert rules, "no #listing-series rule in the compiled CSS"
+    joined = " ".join(rules)
+    assert "nowrap" in joined
+    assert "overflow-x" in joined
+
+
+def test_scroll_arrows_are_styled(site):
+    assert ".series-scroll" in _all_css(site)
+
+
+def test_scroller_script_is_scoped_to_the_blog_page(site):
+    """The script belongs to the one page with a Series row. Loading it
+    site-wide would be harmless -- it no-ops without #listing-series -- but
+    page-level inclusion is the claim being made here, and a site-wide
+    include would quietly ship dead code on every page.
+    """
+    assert "seriesScroller" in read_html(site, "blog/index.html")
+    assert "seriesScroller" not in _post_html(site, "2026-08-18-arithmetic")
+
+
+def test_blog_page_keeps_project_format_settings(site):
+    """blog/index.md now sets `format: html: include-after-body`. Quarto is
+    expected to merge that with the project-level format block rather than
+    replace it; if it replaced it, this one page would silently lose its
+    theme and favicon while every other page kept them.
+    """
+    html_text = read_html(site, "blog/index.html")
+    assert "favicon" in html_text
+    assert re.search(r'<link[^>]+rel="stylesheet"', html_text), (
+        "blog page has no stylesheet link -- project format settings were lost"
+    )
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
+Expected: FAIL — no `#listing-series` rule in the CSS and no script on the page. (`test_blog_page_keeps_project_format_settings` may already pass; that is fine, it is a regression guard for Step 4.)
+
+- [ ] **Step 3: Create the scroller script**
+
+Create `assets/series-row.html`:
+
+```html
+<script>
+// Scroll arrows for the Series row on the blog page. That row is a single
+// non-wrapping strip (see theme.scss) whose native scrollbar is hidden, so
+// these buttons are how it gets moved.
+//
+// Inert unless #listing-series is on the page, so loading it anywhere else
+// does nothing rather than throwing.
+(function seriesScroller() {
+  function init() {
+    var listing = document.getElementById("listing-series");
+    if (!listing) return;
+    var strip = listing.querySelector(".list.grid");
+    if (!strip) return;
+
+    // Scrollable by keyboard, not only by clicking the arrows.
+    strip.setAttribute("tabindex", "0");
+    strip.setAttribute("role", "region");
+    strip.setAttribute("aria-label", "Series");
+
+    var buttons = {};
+    ["left", "right"].forEach(function (side) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "series-scroll series-scroll-" + side;
+      button.setAttribute("aria-label", "Scroll series " + side);
+      button.innerHTML = side === "left" ? "&#8249;" : "&#8250;";
+      button.addEventListener("click", function () {
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        strip.scrollBy({
+          left: (side === "left" ? -1 : 1) * strip.clientWidth * 0.8,
+          behavior: reduce ? "auto" : "smooth"
+        });
+      });
+      listing.appendChild(button);
+      buttons[side] = button;
+    });
+
+    function update() {
+      // The 1px tolerance matters: fractional layout widths mean scrollLeft
+      // rarely equals scrollWidth - clientWidth exactly, which would leave
+      // the right arrow showing at the end of the strip forever.
+      var maxScroll = strip.scrollWidth - strip.clientWidth;
+      buttons.left.hidden = strip.scrollLeft <= 1;
+      buttons.right.hidden = strip.scrollLeft >= maxScroll - 1;
+    }
+
+    strip.addEventListener("scroll", update);
+    // The strip can start overflowing purely because the window narrowed,
+    // so a scroll listener alone would leave the arrows in the wrong state.
+    if (window.ResizeObserver) {
+      new ResizeObserver(update).observe(strip);
+    }
+    window.addEventListener("resize", update);
+    update();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+```
+
+- [ ] **Step 4: Load it from the blog page only**
+
+Add to the frontmatter of `blog/index.md`, below the `listing:` block:
+
+```yaml
+format:
+  html:
+    # Scroll arrows for the Series row. Page-level rather than site-wide:
+    # this is the only page with a Series row. Quarto merges this with the
+    # project-level format block, so the theme and favicon still apply --
+    # test_blog_page_keeps_project_format_settings guards that.
+    include-after-body: ../assets/series-row.html
+```
+
+- [ ] **Step 5: Add the styles**
+
+Append to `theme.scss`:
+
+```scss
+// The Series row on the blog page is exactly one row, always. Quarto
+// renders a grid listing as a CSS grid that wraps onto further rows as
+// cards accumulate, which would push the post grid down the page as the
+// number of series grows. This makes it a single strip that scrolls
+// sideways instead; the arrows come from assets/series-row.html.
+#listing-series {
+  position: relative;
+
+  .list.grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    gap: 1rem;
+    // The arrows are the affordance. A native horizontal scrollbar under
+    // the cards is noise, and on macOS it is invisible until scrolled anyway.
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // Quarto emits one .g-col-1 wrapper per card. Flex children shrink by
+  // default, so without an explicit basis the cards would compress to fit
+  // instead of overflowing -- and nothing would ever scroll.
+  .g-col-1 {
+    flex: 0 0 clamp(210px, 30%, 320px);
+    scroll-snap-align: start;
+  }
+}
+
+// Scroll arrows. Hidden by the script unless the strip actually overflows,
+// so with only a couple of series the row is indistinguishable from a
+// plain grid and no controls appear until they are needed.
+.series-scroll {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid $rule;
+  border-radius: 50%;
+  background: var(--bs-body-bg, #fff);
+  color: $accent;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px $accent-faded;
+  }
+}
+
+.series-scroll-left {
+  left: -0.75rem;
+}
+
+.series-scroll-right {
+  right: -0.75rem;
+}
+```
+
+- [ ] **Step 6: Run the tests to verify they pass**
+
+Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
+Expected: PASS, 4 tests
+
+- [ ] **Step 7: Verify overflow behaviour in a browser**
+
+The feature is invisible with two series, so it must be checked against enough
+cards to overflow. Create six throwaway series, look at the page, then delete
+them — they are never committed.
+
+```bash
+cd /Users/patrickoare/website
+for n in 1 2 3 4 5 6; do
+  mkdir -p "blog/series/scratch-$n"
+  printf -- '---\ntitle: "Scratch %s"\ndescription: "Throwaway card for checking the scroller."\n---\n\nscratch\n' "$n" > "blog/series/scratch-$n/index.md"
+done
+quarto preview
+```
+
+In the browser, on the blog page, confirm:
+
+- the Series cards sit on **one** line, with the row scrolling sideways rather than wrapping;
+- the right arrow is visible and the left arrow is not, until you scroll;
+- clicking an arrow moves the strip and the arrows update at each end;
+- narrowing the window makes the arrows appear on their own, without a reload;
+- the post grid below is unaffected.
+
+Then stop the preview and remove the scratch series:
+
+```bash
+rm -rf blog/series/scratch-*
+```
+
+Confirm they are gone before committing:
+
+Run: `cd /Users/patrickoare/website && ls blog/series`
+Expected: exactly `arithmetic` and `standard-model`
+
+- [ ] **Step 8: Document it**
+
+Append to the `## Blog series` section of `README.md`, after the "Adding a
+part" paragraph:
+
+```markdown
+The Series row on the blog page is always exactly one row. Once there are
+more cards than fit, it scrolls sideways and arrow buttons appear at its
+ends; below that threshold it looks like an ordinary grid and no controls
+are shown. The arrows come from `assets/series-row.html`, which
+`blog/index.md` loads on its own — it is the only page that needs it.
+```
+
+- [ ] **Step 9: Run the whole suite**
+
+Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest -v`
+Expected: PASS, all tests
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add assets/series-row.html theme.scss blog/index.md tests/test_site.py README.md
+git commit -m "feat: keep the series row to one scrollable row with arrows"
+```
+
+---
+
 ## Done when
 
 - `pytest` passes in full.
 - `quarto render` succeeds from a clean checkout with no `_series-*.md` files present.
 - The Blog page shows a Series row above the full post grid.
+- The Series row occupies exactly one row at every window width, scrolling
+  sideways with arrows once the cards overflow.
 - Each series post shows its part number and links to its neighbours and its series page.

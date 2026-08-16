@@ -183,11 +183,59 @@ continues to appear there, newest first, interleaved with standalone posts. A
 reader reaches a post either directly from that grid or via the series card and
 its landing page.
 
+### The Series row is always exactly one row
+
+Quarto renders a grid listing as `#listing-series > .list.grid > .g-col-1`,
+where `.list.grid` is a CSS grid that **wraps** onto further rows once the
+cards outnumber the columns. That is the wrong behaviour here: the Series row
+is an index sitting above the real content, and it must not grow downward and
+push the post grid off the screen as series accumulate.
+
+The row is therefore overridden to a single non-wrapping horizontal strip that
+scrolls, with arrow buttons at each end to move it.
+
+- `.list.grid` inside `#listing-series` becomes `display: flex;
+  flex-wrap: nowrap; overflow-x: auto`, with each `.g-col-1` given a fixed
+  flex basis so cards keep a readable width instead of compressing, and
+  `scroll-snap-align` so a scroll lands on a card edge.
+- The native horizontal scrollbar is hidden; the arrows are the affordance.
+- Arrows are **only** visible when the content actually overflows. With two
+  series today the row is indistinguishable from a plain grid, and nothing
+  appears until it is needed.
+
+Arrows require JavaScript — there is no cross-browser CSS mechanism for a
+scroll button, and Chrome's `::scroll-button()` is not one. This is the site's
+first custom JavaScript, so it establishes where such code lives:
+`assets/series-row.html`, holding an inline `<script>`, pulled in by
+`blog/index.md` alone via a page-level `include-after-body`, not site-wide.
+(`include-after-body` injects a file's contents verbatim, so the file has to
+be HTML carrying the `<script>` tag, not a bare `.js` file. Inlining also
+avoids a second request and any question of how a `src` path gets rewritten.)
+
+The script must:
+
+- do nothing at all if `#listing-series` is absent, so it is inert anywhere it
+  is loaded by accident;
+- show or hide each arrow from the scroll position, recomputed on scroll and on
+  resize (via `ResizeObserver`, since the row can start overflowing purely
+  because the window narrowed);
+- scroll by roughly one viewport of the strip per click;
+- honour `prefers-reduced-motion` by dropping the smooth-scroll behaviour.
+
+Accessibility: the arrows are real `<button>` elements with `aria-label`s, and
+the strip itself gets `tabindex="0"` and a label, so it can be scrolled from
+the keyboard rather than only by clicking the arrows.
+
+Rejected alternative: capping the row at N cards with a "see all series" link.
+It keeps the page tidy without any JavaScript, but it hides series that exist
+behind an extra click, which is the opposite of what the row is for.
+
 ### `theme.scss`
 
-Two additions, sized off the existing `$accent`: `.series-banner` (small,
-above the prose) and `.series-nav` (a rule with prev left, index centre, next
-right).
+Three additions, sized off the existing `$accent` and `$rule`:
+`.series-banner` (small, above the prose), `.series-nav` (a rule with prev
+left, index centre, next right), and the single-row Series strip described
+above, including the `.series-scroll` arrow buttons.
 
 ### `.gitignore`
 
@@ -224,6 +272,16 @@ Assertions run against rendered HTML in `_site`, in the style of
 6. The `.qmd` post in a series has correct navigation despite its execution
    being frozen. The freeze cache holds computed output; this proves it does
    not also hold stale navigation.
+7. The compiled CSS constrains the Series row to one line (`flex-wrap: nowrap`
+   with `overflow-x`), and the blog page loads the scroller script. Overflow
+   behaviour itself cannot be asserted from static output — it needs layout —
+   so it is verified once in a browser against a temporary set of throwaway
+   series, as a step in the implementation plan rather than a standing test.
+8. Adding the page-level `include-after-body` to `blog/index.md` does not
+   drop the project-level `format: html` settings — the favicon link and the
+   theme stylesheet must still be present on that page. Quarto is expected to
+   merge page and project format keys; this proves it, since the failure mode
+   is one unstyled page rather than an error.
 
 ## Documentation
 
