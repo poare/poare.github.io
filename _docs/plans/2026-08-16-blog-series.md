@@ -12,6 +12,11 @@
 
 ## Global Constraints
 
+- Commands assume `$WEBSITE` points at this repo. **No tracked file may contain
+  a machine-specific absolute path** — an absolute home-directory path on
+  either macOS or Linux. This repo is public, and
+  `test_no_local_filesystem_paths_leak_into_tracked_sources` scans every
+  tracked file for exactly that. Use `$WEBSITE` or a repo-relative path.
 - Part order is **publication date ascending, ties broken by directory name**. Part numbers are the 1-based position and are never stored anywhere.
 - `scripts/sync_series.py` writes **only** `_series-banner.md` and `_series-nav.md` inside post directories. It must never write to a file containing prose.
 - Series landing pages follow the stub convention of `scripts/sync_notes.py`: created once if absent, **never overwritten**, removed by `git rm`.
@@ -145,7 +150,7 @@ def test_empty_series_appears_with_no_parts(tree):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_series.py -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_series.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'scripts.sync_series'`
 
 - [ ] **Step 3: Write the implementation**
@@ -295,7 +300,7 @@ def group_parts(posts, series_meta):
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_series.py -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_series.py -v`
 Expected: PASS, 8 tests
 
 - [ ] **Step 5: Commit**
@@ -432,7 +437,7 @@ def test_main_exits_zero_on_a_healthy_tree(tree, monkeypatch):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_series.py -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_series.py -v`
 Expected: FAIL — `ImportError: cannot import name 'banner_markdown'`
 
 - [ ] **Step 3: Write the implementation**
@@ -557,7 +562,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_series.py -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_series.py -v`
 Expected: PASS, 18 tests
 
 - [ ] **Step 5: Register the pre-render script**
@@ -588,10 +593,10 @@ blog/posts/**/_series-*.md
 
 - [ ] **Step 7: Verify the pre-render hook actually runs**
 
-Run: `cd /Users/patrickoare/website && quarto render 2>&1 | grep sync_series`
+Run: `cd "$WEBSITE" && quarto render 2>&1 | grep sync_series`
 Expected: no error output, and the render completes. With no series declared yet, the script has nothing to write and prints nothing — an empty grep result with exit status 0 from `quarto render` is a pass. Confirm the render itself succeeded:
 
-Run: `cd /Users/patrickoare/website && quarto render >/dev/null && echo RENDER_OK`
+Run: `cd "$WEBSITE" && quarto render >/dev/null && echo RENDER_OK`
 Expected: `RENDER_OK`
 
 - [ ] **Step 8: Commit**
@@ -707,7 +712,7 @@ def test_series_page_lists_exactly_its_own_posts(site, series_slug):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k series -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k series -v`
 Expected: FAIL — the `.series-banner` blocks do not exist and `blog/series/…/index.html` is missing.
 
 - [ ] **Step 3: Create the two series landing pages**
@@ -795,7 +800,7 @@ and its final line becomes:
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k series -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k series -v`
 Expected: PASS, 10 tests
 
 If `test_series_page_lists_exactly_its_own_posts` fails with an empty `linked` set, Quarto's listing `include:` filter is not matching the custom `series` field. Fallback: replace the `contents:` and `include:` keys on both landing pages with an explicit list of post paths, e.g.
@@ -811,7 +816,7 @@ and note in the landing page comment that the list is maintained by hand. Re-run
 
 - [ ] **Step 6: Run the whole suite for regressions**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest -v`
 Expected: PASS, all tests
 
 - [ ] **Step 7: Commit**
@@ -858,7 +863,7 @@ def test_blog_page_still_lists_every_post(site):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k blog_page -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k blog_page -v`
 Expected: FAIL — no `#series` element on the page.
 
 - [ ] **Step 3: Add the Series listing to `blog/index.md`**
@@ -905,7 +910,7 @@ Multi-part writing, in order.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k blog_page -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k blog_page -v`
 Expected: PASS, 2 tests
 
 - [ ] **Step 5: Commit**
@@ -955,7 +960,7 @@ def test_series_classes_are_styled(site):
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k series_classes -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k series_classes -v`
 Expected: FAIL — neither class appears in the compiled CSS.
 
 - [ ] **Step 3: Add the styles**
@@ -989,12 +994,12 @@ Append to `theme.scss`:
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k series_classes -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k series_classes -v`
 Expected: PASS
 
 - [ ] **Step 5: Look at the result**
 
-Run: `cd /Users/patrickoare/website && quarto preview` and open `blog/posts/2026-08-18-arithmetic/`. Confirm the banner sits above the prose and the nav sits below a hairline rule with prev on the left and next on the right. Stop the preview with Ctrl-C.
+Run: `cd "$WEBSITE" && quarto preview` and open `blog/posts/2026-08-18-arithmetic/`. Confirm the banner sits above the prose and the nav sits below a hairline rule with prev on the left and next on the right. Stop the preview with Ctrl-C.
 
 - [ ] **Step 6: Commit**
 
@@ -1040,7 +1045,7 @@ Delete the old "No Python is installed here on purpose…" comment block above t
 
 - [ ] **Step 2: Verify the workflow file parses**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/publish.yml')); print('YAML_OK')"`
+Run: `cd "$WEBSITE" && .venv/bin/python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/publish.yml')); print('YAML_OK')"`
 Expected: `YAML_OK`
 
 - [ ] **Step 3: Document the feature**
@@ -1101,7 +1106,7 @@ message naming the post.
 
 - [ ] **Step 4: Run the whole suite**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest -v`
 Expected: PASS, all tests
 
 - [ ] **Step 5: Commit**
@@ -1181,7 +1186,7 @@ def test_blog_page_keeps_project_format_settings(site):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
 Expected: FAIL — no `#listing-series` rule in the CSS and no script on the page. (`test_blog_page_keeps_project_format_settings` may already pass; that is fine, it is a regression guard for Step 4.)
 
 - [ ] **Step 3: Create the scroller script**
@@ -1340,7 +1345,7 @@ Append to `theme.scss`:
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k "series_row or scroll or format_settings" -v`
 Expected: PASS, 4 tests
 
 - [ ] **Step 7: Verify overflow behaviour in a browser**
@@ -1350,7 +1355,7 @@ cards to overflow. Create six throwaway series, look at the page, then delete
 them — they are never committed.
 
 ```bash
-cd /Users/patrickoare/website
+cd "$WEBSITE"
 for n in 1 2 3 4 5 6; do
   mkdir -p "blog/series/scratch-$n"
   printf -- '---\ntitle: "Scratch %s"\ndescription: "Throwaway card for checking the scroller."\n---\n\nscratch\n' "$n" > "blog/series/scratch-$n/index.md"
@@ -1374,7 +1379,7 @@ rm -rf blog/series/scratch-*
 
 Confirm they are gone before committing:
 
-Run: `cd /Users/patrickoare/website && ls blog/series`
+Run: `cd "$WEBSITE" && ls blog/series`
 Expected: exactly `arithmetic` and `standard-model`
 
 - [ ] **Step 8: Document it**
@@ -1392,7 +1397,7 @@ are shown. The arrows come from `assets/series-row.html`, which
 
 - [ ] **Step 9: Run the whole suite**
 
-Run: `cd /Users/patrickoare/website && .venv/bin/python -m pytest -v`
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest -v`
 Expected: PASS, all tests
 
 - [ ] **Step 10: Commit**

@@ -24,3 +24,7 @@ blog/posts/**/_series-*.md
 # deleted again afterwards. Never intended to be tracked or shipped.
 notes/pdf/orphan-fixture.pdf
 notes/thumbs/orphan-fixture.png
+
+# Ephemeral test fixture: the maths-pipeline tests render this page and
+# delete it again. Ignored so a crashed run cannot leave it to be committed.
+/math-fixture.md

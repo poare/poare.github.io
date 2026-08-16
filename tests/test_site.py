@@ -50,7 +50,14 @@ def test_tracked_qmd_files_execute_code():
         text=True,
     )
     assert result.returncode == 0, f"git ls-files *.qmd failed:\n{result.stderr}"
-    qmd_files = [line for line in result.stdout.splitlines() if line]
+    # git ls-files reports the index, which still lists a file that has been
+    # deleted in the working tree but not yet committed. Reading one raises
+    # FileNotFoundError and fails this test for a reason that has nothing to
+    # do with the convention it exists to enforce -- and a file that is gone
+    # cannot violate it. Skip those; the remaining tracked .qmd files are
+    # still all checked.
+    qmd_files = [line for line in result.stdout.splitlines()
+                 if line and (REPO_ROOT / line).is_file()]
     assert qmd_files, "no .qmd files are tracked -- nothing to check"
     for relpath in qmd_files:
         text = (REPO_ROOT / relpath).read_text(encoding="utf-8")
@@ -369,7 +376,11 @@ def test_active_nav_link_markup_matches_theme_selector(site):
     )
 
 
-POST = "blog/posts/2026-08-01-hello/index.html"
+# The maths-pipeline tests below read a page created by the _math_fixture_page
+# fixture rather than a real post. Pointing them at published prose coupled
+# them to whatever happened to be written at the time -- deleting one post
+# broke all three.
+POST = "math-fixture.html"
 
 # Quarto/Pandoc's "katex" html-math-method renders client-side: the maths is
 # actually typeset by KaTeX's JavaScript running in the reader's browser on
@@ -432,8 +443,10 @@ def test_blog_lists_the_post(site):
     html = read_html(site, "blog/index.html")
     listing = extract_element(html, "quarto-listing")
     assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
-    assert "Deflation and the low modes" in listing, "post title missing from the rendered listing card"
-    assert 'href="../blog/posts/2026-08-01-hello/index.html"' in listing, (
+    assert "A Course in Arithmetic: Prerequesites" in listing, (
+        "post title missing from the rendered listing card"
+    )
+    assert 'href="../blog/posts/2026-08-18-arithmetic/index.html"' in listing, (
         "listing card does not link to the post's actual page"
     )
 
@@ -453,20 +466,20 @@ def test_blog_shows_category_tags(site):
     listing = extract_element(html, "quarto-listing")
     assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
     card_tags = re.findall(
-        r'class="listing-category"\s+onclick="window\.quartoListingCategory\([^)]*\)[^>]*>\s*(solvers|lattice)\s*</div>',
+        r'class="listing-category"\s+onclick="window\.quartoListingCategory\([^)]*\)[^>]*>\s*(math|arithmetic)\s*</div>',
         listing,
     )
-    assert set(card_tags) == {"solvers", "lattice"}, (
-        f"post card is missing clickable category tags for solvers/lattice, found: {card_tags}"
+    assert set(card_tags) == {"math", "arithmetic"}, (
+        f"post card is missing clickable category tags for math/arithmetic, found: {card_tags}"
     )
 
     sidebar = extract_element(html, "quarto-listing-category")
     assert sidebar, "no category filter panel (class 'quarto-listing-category') rendered in the sidebar"
     sidebar_tags = re.findall(
-        r'<div class="category" data-category="[^"]+">\s*(solvers|lattice)\b', sidebar
+        r'<div class="category" data-category="[^"]+">\s*(math|arithmetic)\b', sidebar
     )
-    assert set(sidebar_tags) == {"solvers", "lattice"}, (
-        f"sidebar filter panel is missing clickable entries for solvers/lattice, found: {sidebar_tags}"
+    assert set(sidebar_tags) == {"math", "arithmetic"}, (
+        f"sidebar filter panel is missing clickable entries for math/arithmetic, found: {sidebar_tags}"
     )
 
 
@@ -496,7 +509,7 @@ def test_blog_has_currently_reading_header(site):
     assert header_pos < listing_pos, (
         "the 'currently reading' header must render above the generated listing"
     )
-    for book in ("Modern Quantum Mechanics", "Iterative Methods for Sparse Linear Systems"):
+    for book in ("An Introduction to the Theory of Groups", "Serre"):
         assert book in html, f"reading list is missing {book!r}"
 
 
@@ -893,7 +906,7 @@ def test_note_page_renders_the_shortcode_output(site):
     )
 
 
-NOTEBOOK_POST = "blog/posts/2026-08-02-notebook-demo/index.html"
+NOTEBOOK_POST = "blog/posts/2026-08-18-uv-catastrophe/index.html"
 
 
 def test_notebook_post_rendered_a_figure(site):
@@ -940,15 +953,23 @@ def test_freeze_cache_is_committed():
     )
 
 
-def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
-    """Render the whole project again with every python3/python/jupyter
-    lookup on PATH shadowed by a shim that fails loudly. If quarto still
-    produces the figure, and the shim never fires, the figure can only have
-    come from the committed _freeze/ cache, not from re-executing the
-    notebook -- this is exactly the guarantee Task 10's CI depends on, since
-    its workflow installs no Python at all.
+def test_freeze_cache_is_reused_without_a_working_jupyter(site, tmp_path):
+    """Render the whole project again with every jupyter lookup on PATH
+    shadowed by a shim that fails loudly. If quarto still produces the
+    figure, and the shim never fires, the figure can only have come from
+    the committed _freeze/ cache, not from re-executing the notebook.
 
-    We use shims rather than a stripped-down PATH. An earlier version of
+    This used to shim python3 and python as well, on the stronger claim
+    that a render needs no Python at all. That claim died with
+    scripts/sync_series.py: it is a Python pre-render script, so every
+    render now invokes python3 before Quarto touches a single page, and
+    shimming it would fail this test on the pre-render step without ever
+    reaching the question the test exists to ask. CI installs Python for
+    that script and deliberately still installs no Jupyter, so Jupyter is
+    the thing whose absence has to be proven survivable -- and it is the
+    only one of the three that could re-execute a notebook.
+
+    We use a shim rather than a stripped-down PATH. An earlier version of
     this test built a "hostile" PATH by symlinking every entry of /usr/bin
     except python3/pip3, plus a few hard-coded system directories, into a
     staging directory. That approach silently depends on the filesystem
@@ -962,10 +983,10 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
     has already deleted a test for exactly that fault.
 
     Shims sidestep the whole problem, because they depend on no directory
-    layout at all: we prepend one directory containing executable
-    stand-ins named python3, python and jupyter to PATH, ahead of
-    everything already there. PATH shadowing works identically on macOS
-    and Linux, so the shim directory hides real Python entry points
+    layout at all: we prepend one directory containing an executable
+    stand-in named jupyter to PATH, ahead of everything already there.
+    PATH shadowing works identically on macOS and Linux, so the shim
+    directory hides the real Jupyter entry point
     without removing or symlinking a single thing from the rest of PATH --
     coreutils and quarto's own launcher are untouched on any platform.
 
@@ -988,9 +1009,9 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
     assert quarto_bin, "quarto not found on PATH"
 
     marker = "FREEZE-SHIM-INVOKED"
-    shim_dir = tmp_path / "python-shim"
+    shim_dir = tmp_path / "jupyter-shim"
     shim_dir.mkdir()
-    for name in ("python3", "python", "jupyter"):
+    for name in ("jupyter",):
         shim = shim_dir / name
         shim.write_text(
             "#!/bin/sh\n"
@@ -1014,7 +1035,7 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
     # one run where this test's failure signal fires for real, it would
     # otherwise also leave debris in the source tree. Clean it up
     # unconditionally, whether the render/assertions below pass or fail.
-    staging_dir = REPO_ROOT / "blog/posts/2026-08-02-notebook-demo/index_files"
+    staging_dir = REPO_ROOT / "blog/posts/2026-08-18-uv-catastrophe/index_files"
     try:
         result = subprocess.run(
             [quarto_bin, "render", "--output-dir", str(out_dir)],
@@ -1024,11 +1045,11 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
             env=env,
         )
         assert result.returncode == 0, (
-            "quarto render failed with a shimmed Python on PATH -- the freeze "
+            "quarto render failed with a shimmed Jupyter on PATH -- the freeze "
             f"cache was not reused:\n{result.stdout}\n{result.stderr}"
         )
         assert marker not in result.stdout and marker not in result.stderr, (
-            "quarto invoked a python3/python/jupyter shim -- it re-executed the "
+            "quarto invoked the jupyter shim -- it re-executed the "
             f"notebook instead of reusing the freeze cache:\n"
             f"{result.stdout}\n{result.stderr}"
         )
@@ -1039,7 +1060,7 @@ def test_freeze_cache_is_reused_without_a_working_python(site, tmp_path):
         )
         html = rendered.read_text(encoding="utf-8")
         assert "<img" in html or "data:image/png" in html, (
-            "figure missing after a Python-free render"
+            "figure missing after a Jupyter-free render"
         )
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)

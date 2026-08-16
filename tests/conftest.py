@@ -58,8 +58,46 @@ def _orphan_fixture_pdf():
         ORPHAN_FIXTURE_THUMB.unlink(missing_ok=True)
 
 
+MATH_FIXTURE_PAGE = REPO_ROOT / "math-fixture.md"
+
+# Inline and display maths with known LaTeX, so the tests that check
+# Pandoc's maths parsing have fixed content to assert against.
+_MATH_FIXTURE_TEXT = """---
+title: "Maths pipeline fixture"
+---
+
+Inline maths: $D$ and $\\kappa(D)$.
+
+$$
+D_{\\text{defl}} = P D P^{\\dagger}
+$$
+"""
+
+
 @pytest.fixture(scope="session")
-def site(_orphan_fixture_pdf):
+def _math_fixture_page():
+    """Create the ephemeral page the maths-pipeline tests read.
+
+    These tests check that Pandoc consumes `$...$` and `$$...$$` into maths
+    nodes for KaTeX to typeset client-side. They used to assert against the
+    LaTeX in a specific blog post, which coupled a build-pipeline test to
+    one piece of prose: deleting that post broke three tests that had
+    nothing to do with it, and no post published since happens to contain a
+    display equation, so there was nothing to point them at.
+
+    A fixture page owned by the test suite fixes both problems. It is
+    created before the session's render and deleted afterwards, exactly
+    like _orphan_fixture_pdf, so it never ships to the live site.
+    """
+    MATH_FIXTURE_PAGE.write_text(_MATH_FIXTURE_TEXT, encoding="utf-8")
+    try:
+        yield MATH_FIXTURE_PAGE
+    finally:
+        MATH_FIXTURE_PAGE.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="session")
+def site(_orphan_fixture_pdf, _math_fixture_page):
     """Render the site once per test session and return the _site directory."""
     result = subprocess.run(
         ["quarto", "render"],
