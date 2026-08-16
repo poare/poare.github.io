@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 from conftest import assert_local_links_resolve, extract_element, read_html, REPO_ROOT
 
@@ -1932,3 +1933,21 @@ def test_series_classes_are_styled(site):
     combined = _all_css(site)
     assert ".series-banner" in combined
     assert ".series-nav" in combined
+
+
+def test_ci_checks_series_staleness_before_rendering():
+    """The deploy workflow runs no tests, so this check is the only thing
+    standing between a forgotten `sync_series.py` run and a live site whose
+    part numbers are wrong. It has to run BEFORE the render, or the stale
+    build is already published by the time the job fails.
+    """
+    workflow = yaml.safe_load(
+        (REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
+    )
+    steps = workflow["jobs"]["build-deploy"]["steps"]
+    names = [step.get("name", "") for step in steps]
+
+    check = next(i for i, name in enumerate(names) if "up to date" in name)
+    render = next(i for i, name in enumerate(names) if name == "Render the site")
+    assert check < render, f"the staleness check must precede the render; got {names}"
+    assert "sync_series.py" in steps[check]["run"]

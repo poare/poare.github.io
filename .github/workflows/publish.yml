@@ -30,10 +30,40 @@ jobs:
         with:
           version: "1.10.18"
 
-      # No Python is installed here on purpose. Notebook outputs come from the
-      # committed _freeze/ cache, so CI only converts markdown to HTML. If this
-      # step ever fails asking for Jupyter, it means a .qmd file changed and was
-      # committed without re-rendering locally first.
+      # Python here is for the staleness check below, NOT for the render.
+      # Jupyter is still deliberately absent: notebook outputs come from the
+      # committed _freeze/ cache, so if `quarto render` ever fails asking for
+      # Jupyter it means a .qmd file changed and was committed without being
+      # re-rendered locally first.
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the series script's dependencies
+        run: pip install pyyaml
+
+      # The series banners and prev/next links are committed files, because
+      # Quarto resolves {{< include >}} too early for a pre-render script to
+      # produce them. Regenerating them here and failing on any difference is
+      # what keeps a stale part number off the live site: adding a post
+      # mid-series shifts the numbering of every post after it, and neither
+      # the render nor this workflow (which runs no tests) would otherwise
+      # notice.
+      #
+      # `git status --porcelain` rather than `git diff`: a post added to a
+      # series without running the script produces a brand-new UNTRACKED
+      # partial, which `git diff` does not report.
+      - name: Check the committed series navigation is up to date
+        run: |
+          python scripts/sync_series.py
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Series partials are out of date. Run 'python scripts/sync_series.py' locally and commit the result."
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+
       - name: Render the site
         run: quarto render
 

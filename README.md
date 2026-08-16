@@ -46,6 +46,63 @@ wrong Python.
 - **Colours** — edit the variables at the top of `theme.scss`. Nothing further
   down hard-codes a colour.
 
+## Blog series
+
+A series is a directory under `blog/series/`. Its `index.md` is written by
+hand and is never overwritten by any script — taking a series down is a
+`git rm`, exactly like a note.
+
+**Starting one:** create `blog/series/<slug>/index.md` with a title, a
+description, and a listing filtered on the slug:
+
+```yaml
+---
+title: "A Course in Arithmetic"
+description: "One-line blurb, shown on the series card."
+image: thumb.png        # optional; drop the figure in the same directory
+listing:
+  contents: ../../posts/*/index.*
+  include:
+    series: arithmetic
+  sort: "date asc"
+  type: grid
+  fields: [image, date, title, description]
+  feed: false
+---
+```
+
+`contents:` must be that glob. The bare directory `../../posts` matches
+nothing from two levels down, and it fails silently — rendering a valid but
+empty listing rather than an error.
+
+Everything below the front matter is yours. The card on the Blog page takes
+its title, blurb and figure from here, so a series is described in exactly
+one place.
+
+**Adding a part:** put `series: <slug>` in the post's front matter, then
+`{{< include _series-banner.md >}}` directly below the front matter (leave a
+blank line after it) and `{{< include _series-nav.md >}}` at the end of the
+file. Then run
+
+```bash
+python scripts/sync_series.py
+```
+
+and commit the `_series-*.md` files it writes next to the post. Part order is
+publication date ascending, so a new post becomes the next part
+automatically, and back-dating one inserts it mid-series and renumbers the
+rest — which is why the script must be re-run after a **date change** too,
+not only after a new post.
+
+**Why those files are committed rather than generated at build time:** Quarto
+expands `{{< include >}}` while scanning the project to build its file list,
+and that scan runs *before* pre-render scripts do. A partial that does not
+already exist on disk therefore fails the render outright, so a pre-render
+script cannot produce one. Forgetting to re-run the script fails `pytest`
+(`test_series_partials_are_up_to_date`) and fails the deploy workflow before
+it renders anything. Naming a series that has no landing page makes
+`sync_series.py` exit non-zero with a message naming the post.
+
 ## Adding a new notes topic
 
 A topic is a section on `/notes` with its own card grid — Physics and Math are

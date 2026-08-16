@@ -1014,43 +1014,116 @@ git commit -m "style: series banner and prev/next navigation"
 
 **Files:**
 - Modify: `.github/workflows/publish.yml`
+- Modify: `tests/test_site.py` (append)
 - Modify: `README.md`
 
 **Interfaces:**
 - Consumes: `scripts/sync_series.py` from Task 2.
 - Produces: nothing.
 
-- [ ] **Step 1: Add Python to the deploy workflow**
+> **This task was rewritten after Task 3.** It originally installed Python
+> so Quarto could run `sync_series.py` as a pre-render script. That
+> mechanism does not exist: Quarto expands `{{< include >}}` while scanning
+> the project, before pre-render scripts run, so the partials are generated
+> by hand and committed instead. The render therefore needs no Python at
+> all, and `test_freeze_cache_is_reused_without_a_working_python` proves it
+> by rendering with `python3`, `python` and `jupyter` all shimmed to fail.
+>
+> What CI gains here is a **staleness check**, not a build dependency. The
+> one failure mode this design has is a committed partial that was never
+> regenerated after a post was added or re-dated. `pytest` catches it, but
+> the deploy workflow runs no tests, so without this check a post could
+> reach the live site claiming the wrong part number and linking to the
+> wrong neighbour. The check must run *before* `quarto render`, so a stale
+> build is never published.
 
-The workflow currently has a comment stating no Python is installed on purpose. That comment becomes false once a Python pre-render script exists, so replace both the comment and the step. Insert before the "Render the site" step:
+- [ ] **Step 1: Add the staleness check to the deploy workflow**
+
+The existing comment above the "Render the site" step says no Python is
+installed on purpose. That stays true of the *render* but not of the *job*,
+so it is reworded rather than deleted. Replace the comment block and insert
+two steps before "Render the site":
 
 ```yaml
-      # Python is installed for scripts/sync_series.py, which Quarto runs as
-      # a pre-render script to rebuild each series post's navigation.
-      #
-      # Jupyter is deliberately NOT installed. Notebook outputs still come
-      # from the committed _freeze/ cache, and without Jupyter here a .qmd
-      # that was changed and committed without being re-rendered locally
-      # fails the build loudly instead of silently executing in CI.
+      # Python here is for the staleness check below, NOT for the render.
+      # The render still installs no Jupyter: notebook outputs come from the
+      # committed _freeze/ cache, so if `quarto render` ever fails asking for
+      # Jupyter it means a .qmd changed and was committed without being
+      # re-rendered locally first.
       - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install the pre-render script's dependencies
+      - name: Install the series script's dependencies
         run: pip install pyyaml
-```
 
-Delete the old "No Python is installed here on purpose…" comment block above the "Render the site" step, leaving that step itself unchanged.
+      # The series banners and prev/next links are committed files, because
+      # Quarto resolves {{< include >}} too early for a pre-render script to
+      # produce them. Regenerating them here and failing on any difference is
+      # what stops a stale part number reaching the live site: adding a post
+      # mid-series shifts the numbering of every post after it, and nothing
+      # in the render itself would notice.
+      #
+      # `git status --porcelain` rather than `git diff`: a post added to a
+      # series without running the script produces a brand-new UNTRACKED
+      # partial, which `git diff` does not report.
+      - name: Check the committed series navigation is up to date
+        run: |
+          python scripts/sync_series.py
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Series partials are out of date. Run 'python scripts/sync_series.py' locally and commit the result."
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+```
 
 - [ ] **Step 2: Verify the workflow file parses**
 
-Run: `cd "$WEBSITE" && .venv/bin/python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/publish.yml')); print('YAML_OK')"`
+Run: `cd "$WEBSITE" && .venv/bin/python -c "import yaml; yaml.safe_load(open('.github/workflows/publish.yml')); print('YAML_OK')"`
 Expected: `YAML_OK`
 
-- [ ] **Step 3: Document the feature**
+- [ ] **Step 3: Write the failing test**
 
-Add a `## Blog series` section to `README.md`, after the existing `## Adding content` section:
+The ordering is the whole point of the check, and it is exactly the kind of
+thing a later edit reorders without noticing, so it gets a test. Append to
+`tests/test_site.py`:
+
+```python
+def test_ci_checks_series_staleness_before_rendering():
+    """The deploy workflow runs no tests, so this check is the only thing
+    standing between a forgotten `sync_series.py` run and a live site whose
+    part numbers are wrong. It has to run BEFORE the render, or a stale
+    build gets published and the job fails afterwards -- too late.
+    """
+    workflow = yaml.safe_load(
+        (REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text()
+    )
+    steps = workflow["jobs"]["build-deploy"]["steps"]
+    names = [step.get("name", "") for step in steps]
+
+    check = next(i for i, n in enumerate(names) if "up to date" in n)
+    render = next(i for i, n in enumerate(names) if n == "Render the site")
+    assert check < render, (
+        f"the staleness check must precede the render; got {names}"
+    )
+    assert "sync_series.py" in steps[check]["run"]
+```
+
+`tests/test_site.py` does **not** import `yaml` yet — add `import yaml`
+beside `import pytest` in its header. (PyYAML is already a dependency;
+`scripts/sync_notes.py` uses it.)
+
+- [ ] **Step 4: Run the test**
+
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest tests/test_site.py -k ci_checks -v`
+Expected: PASS (Step 1 already added the step this asserts on)
+
+- [ ] **Step 5: Document the feature**
+
+Add a `## Blog series` section to `README.md`, after the existing
+`## Adding content` section:
 
 ````markdown
 ## Blog series
@@ -1068,7 +1141,7 @@ title: "A Course in Arithmetic"
 description: "One-line blurb, shown on the series card."
 image: thumb.png        # optional; drop the figure in the same directory
 listing:
-  contents: ../../posts
+  contents: ../../posts/*/index.*
   include:
     series: arithmetic
   sort: "date asc"
@@ -1077,6 +1150,10 @@ listing:
   feed: false
 ---
 ```
+
+`contents:` must be that glob. The bare directory `../../posts` matches
+nothing from two levels down and fails silently, rendering a valid but
+empty listing.
 
 Everything below the front matter is yours. The card on the Blog page takes
 its title, blurb, and figure from here, so a series is described in exactly
@@ -1088,32 +1165,44 @@ one place.
 {{< include _series-banner.md >}}
 ```
 
-directly below the front matter and
+directly below the front matter (leave a blank line after it) and
 
 ```
 {{< include _series-nav.md >}}
 ```
 
-at the end of the file. Nothing else. Part order is publication date
-ascending, so the new post becomes the next part automatically, and
-back-dating one inserts it mid-series and renumbers the rest.
-
-Both included files are generated by `scripts/sync_series.py`, which Quarto
-runs before every render. They are gitignored — never edit them, and never
-commit them. Naming a series with no landing page fails the render with a
-message naming the post.
-````
-
-- [ ] **Step 4: Run the whole suite**
-
-Run: `cd "$WEBSITE" && .venv/bin/python -m pytest -v`
-Expected: PASS, all tests
-
-- [ ] **Step 5: Commit**
+at the end of the file. Then run:
 
 ```bash
-git add .github/workflows README.md
-git commit -m "ci: install python for the series pre-render script; document series"
+python scripts/sync_series.py
+```
+
+and commit the `_series-*.md` files it writes alongside the post. Part order
+is publication date ascending, so a new post becomes the next part
+automatically, and back-dating one inserts it mid-series and renumbers the
+rest — which is why the script has to be re-run after any date change, not
+only after a new post.
+
+**Why they are committed rather than generated at build time:** Quarto
+expands `{{< include >}}` while scanning the project to build its file
+list, and that scan happens *before* pre-render scripts run. A partial that
+does not already exist on disk therefore fails the render outright. Forgetting
+to re-run the script fails `pytest` (`test_series_partials_are_up_to_date`)
+and fails the deploy workflow before it renders. Naming a series that has no
+landing page makes `sync_series.py` exit non-zero with a message naming the
+post.
+````
+
+- [ ] **Step 6: Run the whole suite**
+
+Run: `cd "$WEBSITE" && .venv/bin/python -m pytest -q`
+Expected: PASS, all tests
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add .github/workflows README.md tests/test_site.py
+git commit -m "ci: fail the deploy if the series navigation is stale"
 ```
 
 ---
