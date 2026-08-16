@@ -136,3 +136,119 @@ def group_parts(posts, series_meta):
     for parts in grouped.values():
         parts.sort(key=lambda post: (post["date"], post["slug"]))
     return grouped
+
+
+BANNER_NAME = "_series-banner.md"
+NAV_NAME = "_series-nav.md"
+
+
+# Links point at SOURCE paths, not .html. Quarto rewrites the extension and
+# the leading slash per page depth on the way out, and resolving against
+# the source file means Quarto itself errors on a link to a post that does
+# not exist -- an .html link would silently 404 in production instead.
+def _post_href(post):
+    return f"/blog/posts/{post['slug']}/{post['source']}"
+
+
+def _series_href(series_slug):
+    return f"/blog/series/{series_slug}/index.md"
+
+
+def banner_markdown(part_number, series_slug, series_title):
+    """The 'Part N of <series>' line that opens a post in a series."""
+    return (
+        "::: {.series-banner}\n"
+        f"Part {part_number} of [{series_title}]({_series_href(series_slug)})\n"
+        ":::\n"
+    )
+
+
+def nav_markdown(parts, index, series_slug):
+    """The prev / index / next footer for the part at `index`.
+
+    The prev link is omitted on the first part and the next on the last:
+    a link reading "Part 0" is worse than no link at all.
+    """
+    links = []
+    if index > 0:
+        previous = parts[index - 1]
+        links.append(
+            f"[← Part {index}: {previous['title']}]({_post_href(previous)})"
+        )
+    links.append(f"[All parts]({_series_href(series_slug)})")
+    if index < len(parts) - 1:
+        following = parts[index + 1]
+        links.append(
+            f"[Part {index + 2}: {following['title']} →]({_post_href(following)})"
+        )
+    return "::: {.series-nav}\n" + " · ".join(links) + "\n:::\n"
+
+
+def _write_if_changed(path, text):
+    """Write only when the content differs.
+
+    Rewriting an unchanged file bumps its mtime, and Quarto keys some of
+    its caching on mtimes -- so an unconditional write would make every
+    render look like every post had changed.
+    """
+    if path.is_file() and path.read_text(encoding="utf-8") == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def write_partials(grouped, series_meta, posts):
+    """Write each series post's partials and delete any stale ones.
+
+    Returns human-readable lines describing what changed.
+    """
+    lines = []
+    in_a_series = set()
+
+    for series_slug, parts in grouped.items():
+        if not parts:
+            lines.append(f"warning: series {series_slug!r} has no posts yet")
+            continue
+        title = series_meta[series_slug]["title"]
+        for index, post in enumerate(parts):
+            in_a_series.add(post["slug"])
+            directory = post["path"].parent
+            banner = banner_markdown(index + 1, series_slug, title)
+            nav = nav_markdown(parts, index, series_slug)
+            if _write_if_changed(directory / BANNER_NAME, banner):
+                lines.append(f"wrote {post['slug']}/{BANNER_NAME}")
+            if _write_if_changed(directory / NAV_NAME, nav):
+                lines.append(f"wrote {post['slug']}/{NAV_NAME}")
+
+    # A post that drops its `series:` key keeps its include directives
+    # until they are removed by hand. Leaving the partials behind would
+    # render last render's navigation indefinitely, and since they are
+    # gitignored, no diff would ever show it.
+    for post in posts:
+        if post["slug"] in in_a_series:
+            continue
+        for name in (BANNER_NAME, NAV_NAME):
+            stale = post["path"].parent / name
+            if stale.is_file():
+                stale.unlink()
+                lines.append(f"removed stale {post['slug']}/{name}")
+
+    return lines
+
+
+def main(argv=None):
+    try:
+        posts = collect_posts(POSTS_DIR)
+        series_meta = load_series(SERIES_DIR)
+        grouped = group_parts(posts, series_meta)
+    except SeriesError as exc:
+        print(f"sync_series: {exc}", file=sys.stderr)
+        return 1
+
+    for line in write_partials(grouped, series_meta, posts):
+        print(f"sync_series: {line}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

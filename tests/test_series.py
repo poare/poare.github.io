@@ -4,10 +4,14 @@ import pytest
 
 from scripts.sync_series import (
     SeriesError,
+    banner_markdown,
     collect_posts,
     group_parts,
     load_series,
+    main,
+    nav_markdown,
     read_frontmatter,
+    write_partials,
 )
 
 
@@ -93,3 +97,97 @@ def test_empty_series_appears_with_no_parts(tree):
     parts = group_parts(collect_posts(tree / "blog" / "posts"),
                         load_series(tree / "blog" / "series"))
     assert parts["standard-model"] == []
+
+
+def arithmetic_parts(tree):
+    """The ordered parts of the fixture tree's only populated series."""
+    return group_parts(collect_posts(tree / "blog" / "posts"),
+                       load_series(tree / "blog" / "series"))["arithmetic"]
+
+
+def test_banner_names_the_part_and_links_to_the_series():
+    text = banner_markdown(3, "arithmetic", "A Course in Arithmetic")
+    assert "Part 3 of" in text
+    assert "[A Course in Arithmetic](/blog/series/arithmetic/index.md)" in text
+    assert ".series-banner" in text
+
+
+def test_nav_on_a_middle_part_links_both_ways(tree):
+    text = nav_markdown(arithmetic_parts(tree), 1, "arithmetic")
+    assert "Part 1: First" in text
+    assert "Part 3: Third" in text
+    assert "[All parts](/blog/series/arithmetic/index.md)" in text
+
+
+def test_nav_omits_prev_on_the_first_part(tree):
+    text = nav_markdown(arithmetic_parts(tree), 0, "arithmetic")
+    assert "Part 1:" not in text
+    assert "Part 2: Second" in text
+
+
+def test_nav_omits_next_on_the_last_part(tree):
+    text = nav_markdown(arithmetic_parts(tree), 2, "arithmetic")
+    assert "Part 2: Second" in text
+    assert "Part 4" not in text
+    assert "Third" not in text.split("[All parts]")[1]
+
+
+def test_nav_links_to_the_actual_source_filename():
+    """A .qmd post is served from index.html like any other, but the link
+    has to name the source file that exists -- Quarto resolves it against
+    the source tree, and a link to a nonexistent index.md is a build error.
+    """
+    parts = [
+        {"slug": "p1", "title": "One", "source": "index.md"},
+        {"slug": "p2", "title": "Two", "source": "index.qmd"},
+    ]
+    text = nav_markdown(parts, 0, "s")
+    assert "/blog/posts/p2/index.qmd" in text
+
+
+def test_write_partials_creates_both_files(tree):
+    posts = collect_posts(tree / "blog" / "posts")
+    meta = load_series(tree / "blog" / "series")
+    write_partials(group_parts(posts, meta), meta, posts)
+    post_dir = tree / "blog" / "posts" / "2026-08-19-b"
+    assert (post_dir / "_series-banner.md").is_file()
+    assert (post_dir / "_series-nav.md").is_file()
+    assert "Part 2 of" in (post_dir / "_series-banner.md").read_text(encoding="utf-8")
+
+
+def test_write_partials_removes_stale_files_from_a_post_that_left_its_series(tree):
+    """A post dropping its `series:` key must lose its partials, or the
+    include directives it still carries would render last render's
+    navigation forever -- and being gitignored, nothing else would notice.
+    """
+    solo = tree / "blog" / "posts" / "2026-08-21-solo"
+    (solo / "_series-nav.md").write_text("stale\n", encoding="utf-8")
+    posts = collect_posts(tree / "blog" / "posts")
+    meta = load_series(tree / "blog" / "series")
+    write_partials(group_parts(posts, meta), meta, posts)
+    assert not (solo / "_series-nav.md").exists()
+
+
+def test_write_partials_is_idempotent(tree):
+    posts = collect_posts(tree / "blog" / "posts")
+    meta = load_series(tree / "blog" / "series")
+    nav = tree / "blog" / "posts" / "2026-08-19-b" / "_series-nav.md"
+    write_partials(group_parts(posts, meta), meta, posts)
+    first = nav.read_text(encoding="utf-8")
+    write_partials(group_parts(posts, meta), meta, posts)
+    assert nav.read_text(encoding="utf-8") == first
+
+
+def test_main_exits_non_zero_on_an_unknown_series(tree, monkeypatch, capsys):
+    write(tree / "blog" / "posts" / "2026-08-22-typo" / "index.md",
+          '---\ntitle: "Typo"\ndate: 2026-08-22\nseries: nope\n---\n\nbody\n')
+    monkeypatch.setattr("scripts.sync_series.POSTS_DIR", tree / "blog" / "posts")
+    monkeypatch.setattr("scripts.sync_series.SERIES_DIR", tree / "blog" / "series")
+    assert main([]) == 1
+    assert "nope" in capsys.readouterr().err
+
+
+def test_main_exits_zero_on_a_healthy_tree(tree, monkeypatch):
+    monkeypatch.setattr("scripts.sync_series.POSTS_DIR", tree / "blog" / "posts")
+    monkeypatch.setattr("scripts.sync_series.SERIES_DIR", tree / "blog" / "series")
+    assert main([]) == 0

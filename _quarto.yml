@@ -1,6 +1,11 @@
 project:
   type: website
   output-dir: _site
+  # Regenerates each series post's banner and prev/next partials before
+  # every render, so navigation cannot go stale. The partials are
+  # gitignored: they are derived entirely from post front matter, and a
+  # committed copy would just be a second source of truth to drift.
+  pre-render: scripts/sync_series.py
   resources:
     - notes/pdf/
     - cv/*.pdf
