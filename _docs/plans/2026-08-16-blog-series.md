@@ -1517,6 +1517,20 @@ git commit -m "feat: keep the series row to one scrollable row with arrows"
 
 Not part of this plan; recorded here so they are not lost.
 
+- [ ] **Confirm the scroll arrows animate in a real browser.** Task 7's
+  behaviour was verified in the in-app browser pane, which produces no
+  animation frames: `scrollBy({behavior: "smooth"})` is a no-op there, and
+  so is `window.scrollTo({behavior: "smooth"})` on the document, so the
+  cause is the pane rather than the page. Everything reachable without
+  frames was confirmed — the strip holds all cards on one line and
+  overflows, the click handler fires, the arrows show and hide correctly at
+  the start, middle and end of the strip, and both vanish when only two
+  cards are present. What could NOT be confirmed is that a click visibly
+  animates the strip, and that the browser dispatches `scroll` and
+  `ResizeObserver` events on its own (they were invoked directly instead).
+  Open the blog page in a normal browser with six throwaway series present
+  and click through it once.
+
 - [ ] **Give each series its own thumbnail.** Neither landing page sets
   `image:` yet -- the line is commented out pending artwork -- and the two
   cards consequently do not match. Arithmetic renders text-only, while

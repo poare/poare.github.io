@@ -1,7 +1,7 @@
 # Blog series — design
 
 **Date:** 2026-08-16
-**Status:** approved; Tasks 1-3 implemented (see `_docs/plans/2026-08-16-blog-series.md`)
+**Status:** implemented; all seven tasks complete (see `_docs/plans/2026-08-16-blog-series.md`)
 
 ## Problem
 
