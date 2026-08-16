@@ -5,32 +5,52 @@
 page-layout: full
 title: "Blog"
 listing:
-  id: posts
-  contents: posts
-  type: grid
-  sort: "date desc"
-  categories: true
-  # Posts that have an image (e.g. a figure from an executed notebook) show it.
-  # Posts without one get a text-only card: theme.scss hides Quarto's empty
-  # grey `.listing-item-img-placeholder` rather than reserving dead space.
-  fields: [image, date, title, categories, description]
-  feed: false
+  # The Series row: one card per directory under blog/series/. Title, blurb
+  # and figure all come from that series' own landing page front matter, so
+  # a series is described in exactly one place and this row never needs
+  # editing when one is added.
+  - id: series
+    contents: series/*/index.md
+    type: grid
+    sort: "title"
+    fields: [image, title, description]
+    feed: false
+  - id: posts
+    contents: posts
+    type: grid
+    sort: "date desc"
+    categories: true
+    # Posts that have an image (e.g. a figure from an executed notebook) show it.
+    # Posts without one get a text-only card: theme.scss hides Quarto's empty
+    # grey `.listing-item-img-placeholder` rather than reserving dead space.
+    fields: [image, date, title, categories, description]
+    feed: false
 ---
 
 ::: {.accent-rule}
 :::
 
-Notes on whatever I am thinking about — usually numerical linear algebra,
-sometimes lattice field theory, sometimes a textbook I am working through.
+Notes page to discuss anything I'm currently thinking about. I aim to have a few types of blog posts:
+- Book reviews: I'll be posting thoughts and interesting things I learn from each chapter of whatever book I'm reading at the time, and probably will conclude with a "book review" type post discussing the book as a whole.
+- Miscellaneous posts / series: 
 
 ::: {.currently-reading}
 ### Currently reading
 
 Edit this list by hand as books come and go.
 
-- *Modern Quantum Mechanics* — Sakurai & Napolitano
-- *Iterative Methods for Sparse Linear Systems* — Saad
+- *A Course in Arithmetric* — Jean Pierre Serre
+- *An Introduction to the Theory of Groups* — Joseph Rotman
 :::
+
+## Series
+
+Multi-part writing, in order.
+
+:::{#series}
+:::
+
+## All posts
 
 :::{#posts}
 :::

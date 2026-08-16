@@ -441,8 +441,8 @@ def test_blog_lists_the_post(site):
     (e.g. a <title> tag or a search-index leak), which would pass even if
     the `listing:` block were misconfigured and rendered nothing."""
     html = read_html(site, "blog/index.html")
-    listing = extract_element(html, "quarto-listing")
-    assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
+    listing = extract_element(html, "listing-posts", by="id")
+    assert listing, "no post listing rendered — the listing block did not run"
     assert "A Course in Arithmetic: Prerequesites" in listing, (
         "post title missing from the rendered listing card"
     )
@@ -460,11 +460,14 @@ def test_blog_shows_category_tags(site):
     `quarto-listing-category` filter panel with a real `data-category` value
     per tag. Plain-text tags, or omitting `categories: true`, would fail
     both checks.
+
+    Scoped to #listing-posts by id, not to the first `.quarto-listing` on
+    the page: the Series row is a listing too, and it sits above this one.
     """
     html = read_html(site, "blog/index.html")
 
-    listing = extract_element(html, "quarto-listing")
-    assert listing, "no element with class 'quarto-listing' rendered — the listing block did not run"
+    listing = extract_element(html, "listing-posts", by="id")
+    assert listing, "no post listing rendered — the listing block did not run"
     card_tags = re.findall(
         r'class="listing-category"\s+onclick="window\.quartoListingCategory\([^)]*\)[^>]*>\s*(math|arithmetic)\s*</div>',
         listing,
@@ -1884,3 +1887,27 @@ def test_series_page_lists_exactly_its_own_posts(site, series_slug):
     expected = {slug for slug, (series, _) in SERIES_POSTS.items()
                 if series == series_slug}
     assert linked == expected
+
+
+def test_blog_page_shows_one_card_per_series(site):
+    """The Series row indexes every series that exists.
+
+    Scoped to the listing block by id rather than searched for across the
+    whole page: a link to a series landing page could just as easily come
+    from the prose above, and a test that accepted that would pass with no
+    Series row at all.
+    """
+    row = extract_element(read_html(site, "blog/index.html"), "listing-series", by="id")
+    assert row, "blog page has no series listing block"
+    linked = set(re.findall(r'href="[^"]*series/([^/"]+)/', row))
+    assert linked == {"arithmetic", "standard-model"}
+
+
+def test_blog_page_still_lists_every_post(site):
+    """Series parts stay in the main grid. The Series row is an index, not
+    a replacement -- a new part must still surface on the blog front page
+    when it is published.
+    """
+    grid = extract_element(read_html(site, "blog/index.html"), "listing-posts", by="id")
+    linked = set(re.findall(r'href="[^"]*posts/([^/"]+)/', grid))
+    assert set(SERIES_POSTS) <= linked
