@@ -94,6 +94,22 @@ automatically, and back-dating one inserts it mid-series and renumbers the
 rest — which is why the script must be re-run after a **date change** too,
 not only after a new post.
 
+**If any affected post is a `.qmd`, it needs one more step.** Quarto's
+freeze cache stores each executed page's markdown *after* its includes are
+expanded, and the cache key covers only the `.qmd` source — so rewriting a
+partial does not invalidate it, and the post goes on serving the navigation
+from whenever its code last ran. Nothing about that is visible in the source
+tree: `sync_series.py` reports the file written, and the committed partial is
+correct. Delete the post's directory under `_freeze/`, re-render, and commit
+the refreshed cache:
+
+```bash
+rm -rf _freeze/blog/posts/<slug>
+quarto render
+```
+
+`test_rendered_nav_matches_the_committed_partial` fails if you forget.
+
 **Why those files are committed rather than generated at build time:** Quarto
 expands `{{< include >}}` while scanning the project to build its file list,
 and that scan runs *before* pre-render scripts do. A partial that does not

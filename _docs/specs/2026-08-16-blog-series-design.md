@@ -152,7 +152,43 @@ Depends on PyYAML, matching `sync_notes.py`. Rejected alternative: hand-parsing
 frontmatter with the standard library to avoid a CI dependency — a bespoke YAML
 parser diverging from the rest of `scripts/` is not worth ten seconds of CI.
 
+### The freeze cache pins expanded includes
+
+A second Quarto ordering constraint, found while styling the navigation and
+distinct from the include/pre-render one above.
+
+`_freeze/` stores each executed page's markdown *after* `{{< include >}}`
+directives are expanded, and the cache key covers only the `.qmd` source.
+Rewriting a partial therefore does not invalidate the cache: a frozen post
+keeps serving the navigation from whenever its code last ran. Nothing in the
+source tree shows it — `sync_series.py` reports the write, the committed
+partial is correct, and both `test_series_partials_are_up_to_date` and the
+CI staleness check pass, because all three look at files on disk.
+
+The realistic trigger is routine: inserting a post mid-series renumbers
+every part after it, so a `.qmd` further down the series silently keeps its
+old part number and old neighbours. Verified by simulating exactly that in a
+clone — the committed partial read "Part 2" while the rendered page read
+"Part 1".
+
+The design does not try to prevent this; re-executing on every partial
+change would put Jupyter back in the build, which is precisely what the
+freeze cache exists to avoid. It is instead made loud:
+`test_rendered_nav_matches_the_committed_partial` compares each rendered
+nav against the partial it was generated from, and the fix is the one
+already documented for any `.qmd` change — delete that post's `_freeze/`
+directory, re-render, commit the refreshed cache.
+
 ### Generated markup
+
+The three links each go in their **own** fenced div. Joining them onto one
+line separated by middots — the first implementation — is markdown for a
+single paragraph, and a container with one child has nothing to distribute:
+`justify-content` applies and nothing moves. `theme.scss` places the three
+wrappers in three explicit grid columns rather than using flex with
+`space-between`, because the first and last part of a series carry only two
+links and `space-between` would push the index link to whichever end was
+free, landing it somewhere different on nearly every page.
 
 Banner, at the top of a post:
 
