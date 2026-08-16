@@ -1911,3 +1911,24 @@ def test_blog_page_still_lists_every_post(site):
     grid = extract_element(read_html(site, "blog/index.html"), "listing-posts", by="id")
     linked = set(re.findall(r'href="[^"]*posts/([^/"]+)/', grid))
     assert set(SERIES_POSTS) <= linked
+
+
+def _all_css(site):
+    """Every stylesheet in the built site, concatenated.
+
+    theme.scss is compiled into a hashed bootstrap bundle whose filename
+    changes whenever the theme does, so a test cannot name the file it
+    needs to read.
+    """
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore")
+                     for path in sorted(site.rglob("*.css")))
+
+
+def test_series_classes_are_styled(site):
+    """An unstyled .series-nav still renders -- as an undifferentiated line
+    of links with no rule above it -- so nothing else in the suite would
+    notice the styles being dropped from theme.scss.
+    """
+    combined = _all_css(site)
+    assert ".series-banner" in combined
+    assert ".series-nav" in combined

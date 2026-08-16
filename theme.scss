@@ -177,3 +177,29 @@ body {
   border: 1px solid $rule;
   border-radius: 10px;
 }
+
+// Series banner: the "Part 3 of ..." line above a post's prose. Small and
+// quiet -- it is orientation, not content, and must not compete with the
+// post title directly above it. $muted is the palette's secondary-text
+// colour, used here rather than a one-off grey so a future dark mode stays
+// a single file.
+.series-banner {
+  font-size: 0.85rem;
+  color: $muted;
+  margin-bottom: 1.5rem;
+}
+
+// Series navigation: the prev / index / next footer. The rule above it
+// separates navigation from prose; without one the links read as a final
+// sentence of the post. Wraps rather than squeezing, since three long part
+// titles will not fit one line on a phone.
+.series-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+  border-top: 1px solid $rule;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  font-size: 0.9rem;
+}
