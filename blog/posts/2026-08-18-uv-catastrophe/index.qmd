@@ -1,36 +1,55 @@
 ---
 title: "The Ultraviolet Catastrophe"
-date: 2026-08-18
+date: 2026-09-02
 categories: [physics, standard-model]
 series: standard-model
 ---
 
 {{< include _series-banner.md >}}
 
-A quick demonstration that executable code works on this site. The residual of
-a Krylov method typically falls geometrically until it stagnates.
+The classical black-body spectrum was 
 
 ```{python}
-#| label: fig-residual
-#| fig-cap: "Residual norm against iteration count."
+#| label: fig-uv-catastrophe
+#| fig-cap: "Illustration of the Ultraviolet Catastrophe."
 #| echo: true
 
 import matplotlib.pyplot as plt
 import numpy as np
+# plotstyle re-exports plottools with the site's 'blog_post' figure style
+# already selected, so no style= argument is needed at any call site below.
+import plotstyle as pt
 
-iterations = np.arange(0, 60)
-residual = np.exp(-0.12 * iterations) + 1e-9
+# Constants
+h = 6.63e-34            # J*s
+k = 1.38e-23            # J/K
+c = 3e8                 # m/s
+def wavelength(omega):
+    return 2*np.pi / omega
 
-fig, ax = plt.subplots(figsize=(5.5, 3.4))
-# "#750014" duplicates the $accent colour defined in theme.scss — matplotlib
-# can't read SCSS variables, so if the site accent colour ever changes,
-# update this literal to match.
-ax.semilogy(iterations, residual, color="#750014", linewidth=1.6)
-ax.set_xlabel("iteration")
-ax.set_ylabel(r"$\|r_k\| / \|r_0\|$")
-ax.grid(True, which="both", alpha=0.25)
-fig.tight_layout()
-plt.show()
+# Radiation spectra
+def rayleigh_jeans(T, scale=1):
+    def f(omega):
+        nu = omega / (2*np.pi)
+        return scale * 2*(nu**2)*k*T/(c**2)
+    return f
+def planck_law(T, scale=1):
+    def f(omega):
+        nu = omega / (2*np.pi)
+        return scale * 2*h*(nu**3)/(c**2) / (np.exp(h*nu/(k*T)) - 1)
+    return f
+T = 5800            # temp of sun in Kelvin
+rj = rayleigh_jeans(T)
+planck = planck_law(T)
+
+# Plot the spectra
+T_rng = [1e12, 1e16]
+fig, axes = pt.add_subplots(); ax = axes[0]
+pt.plot_1d_func(rj, ax = ax, x_bounds = T_rng, nx = 500, ax_label = [r'$\omega=2\pi f$', r'$I_\omega$'], fn_label = 'Classical')
+pt.plot_1d_func(planck, ax = ax, x_bounds = T_rng, nx = 500, ls = '--', ax_label = [r'$\omega=2\pi f$', r'$I_\omega$'], fn_label = 'Planck')
+ax.set_xscale('log')
+ax.set_ylim((-1e-9, 5e-8))
+ax.legend(framealpha = 0)
 ```
 
 The figure above was generated when this page was rendered, not pasted in.
