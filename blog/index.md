@@ -37,14 +37,10 @@ format:
 ::: {.accent-rule}
 :::
 
-Notes page to discuss anything I'm currently thinking about. I aim to have a few types of blog posts:
-- Book reviews: I'll be posting thoughts and interesting things I learn from each chapter of whatever book I'm reading at the time, and probably will conclude with a "book review" type post discussing the book as a whole.
-- Miscellaneous posts / series: 
+One of the things I love to do in my free time is read math and physics textbooks. I find that whenever I read a textbook, the only way for me to truly understand what I'm reading is to take the time to write about it and think through the logical arguments myself. As such, I'll be documenting the books I'm reading here, although these will be quite technical. I also hope to write some less technical "series" posts about subjects I am an expert on which I find interesting. 
 
 ::: {.currently-reading}
 ### Currently reading
-
-Edit this list by hand as books come and go.
 
 - *A Course in Arithmetric* — Jean Pierre Serre
 - *An Introduction to the Theory of Groups* — Joseph Rotman

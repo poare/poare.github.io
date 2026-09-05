@@ -18,6 +18,11 @@ A **field** is an algebraic object that generalizes structures like $\mathbb Q, 
 
 I could write out these axioms explicitly, but there's like 8 of them and it's kind of a pain: they tell you the same information, which is that you have addition and multiplication which work nicely with one another (distribute), are commutative, and have inverses. 
 
+<!-- Characteristic -->
 Infinite fields are well and good, but finite fields are where things get strange. 
+
+<!-- Fields of characteristic p, freshman's dream -->
+
+<!-- all homomorphisms are isomorphisms -->
 
 {{< include _series-nav.md >}}
