@@ -241,6 +241,15 @@ its own does not unpublish anything — the files stay until they are
   guaranteed stable across Quarto releases. If you upgrade Quarto locally, bump
   the pin in the workflow to match — the local version is what generates the
   cache CI later relies on.
+- **Editing `plottools.py` does not refresh already-rendered figures.** The
+  `.pth` file points at the live `lqcd` working tree, so the next cell to
+  *execute* picks up your edits with no reinstall — but the freeze cache key
+  covers only the `.qmd` source, exactly as it does for `{{< include >}}`
+  partials (see "Blog series" above). A post whose code has not changed keeps
+  serving the figure from whenever it last ran, however much `plottools` has
+  moved on since. Delete that post's `_freeze/` entry and re-render to pull
+  the changes through. This cuts both ways and is mostly a feature: a
+  refactor in `lqcd` cannot silently redraw figures in published posts.
 - **Never commit unsubsetted `.ttf` files** to `assets/fonts/`. The subsetted
   WOFF2 outputs are already committed under `assets/fonts/` — you do not need
   to regenerate them on a new machine. Only run
@@ -309,6 +318,74 @@ dependencies into that environment rather than globally — activate it, then:
 
 `jupyter` and `matplotlib` in that list are only needed to re-render the
 notebook blog post; everything else is needed for the scripts and the tests.
+
+### Making `plottools` importable
+
+Posts that plot use `plottools.py` from the separate `lqcd` repository, via a
+bare `from plottools import *`. That import needs two things set up per
+machine, and neither belongs in `requirements.txt`: the path is
+machine-specific, and CI never executes a notebook cell at all (see the
+`_freeze/` note under "Conventions worth knowing"), so nothing here can ever
+break a deploy.
+
+First the dependencies. `plottools` imports `seaborn` and star-imports its
+sibling `formattools`, which in turn wants `scipy` and `h5py`:
+
+    .venv/bin/pip install seaborn scipy h5py
+
+Then put the directory holding those modules on `sys.path`. It has to be the
+directory itself, not a parent: `plottools` and `formattools` are flat
+modules that star-import each other by bare name, so there is no
+`utilities.plottools` to import and nothing pip-installable to point at. A
+`.pth` file in the venv — a plain list of directories Python appends to
+`sys.path` at startup — does this permanently, so no post needs any
+`sys.path` boilerplate of its own:
+
+    .venv/bin/python -c "import site, pathlib; pathlib.Path(site.getsitepackages()[0], 'lqcd-utilities.pth').write_text('/absolute/path/to/lqcd/utilities\n')"
+
+Substitute your own clone path. **It must be absolute.** A `.pth` line is
+consumed verbatim — `~` is *not* expanded, and a line that does not resolve
+to a real directory is skipped in silence, so `~/lqcd/utilities` adds no path
+entry at all and surfaces much later as `ModuleNotFoundError: No module named
+'plottools'` in the middle of a render. The `python3.12` in the
+site-packages path also varies by machine, which is why the command above
+asks `site` for it rather than spelling it out.
+
+Verify with:
+
+    .venv/bin/python -c "import plottools; print(plottools.__file__)"
+
+**Quarto has to pick that interpreter, and by default it will not.** It runs
+whatever `python3` resolves to on `PATH`, which on a machine with Anaconda
+installed is `/opt/homebrew/anaconda3/bin/python3` — an interpreter with none
+of the above set up. The failure is a `ModuleNotFoundError` for `plotstyle` or
+`plottools` in the middle of a render, which reads like a broken `.pth` rather
+than the wrong interpreter.
+
+The committed `_environment` file at the repo root is what prevents this:
+Quarto reads it before every render and it sets
+
+    QUARTO_PYTHON=.venv/bin/python
+
+The path is relative to the project root, so the file is portable and needs no
+per-machine editing — provided the environment really is at `.venv`. **If you
+use conda or any other environment instead** (see above), point this line at
+that interpreter instead, or delete the file and activate the environment
+before rendering:
+
+    source .venv/bin/activate
+    quarto preview
+
+Both routes are verified to execute cells against the right interpreter.
+
+`_environment` is safe for CI even though no `.venv` exists there: with the
+freeze cache current, a full `quarto render` never starts a kernel, so the
+unusable path is never resolved. Verified by rendering the site with
+`QUARTO_PYTHON` deliberately pointed at a nonexistent file — exit 0.
+
+Skip this section entirely if you are not re-rendering the plotting posts.
+Without it `quarto render` fails loudly on those `.qmd` files; every other
+page, and the whole test suite, is unaffected.
 
 **And never `pip install fitz`.** The scripts import
 PyMuPDF, whose legacy module name is `fitz`, but the name `fitz` on PyPI
