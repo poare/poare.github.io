@@ -303,3 +303,92 @@ body {
 .series-scroll-right {
   right: -0.75rem;
 }
+
+// ---------------------------------------------------------------------------
+// Blog post measure. Posts take `page-layout: full` (blog/posts/_metadata.yml)
+// so their left gutter lines up with every other tab. Left at that, prose would
+// run the full width of the page column — the ~120-characters-a-line trade-off
+// already noted in index.md, and felt harder here than anywhere else, because
+// posts are the most prose-heavy pages on the site.
+//
+// So the column is capped and pinned left: the left edge stays where the full
+// layout put it and the surplus is thrown to the right gutter. Measured at a
+// 1440px viewport that gives 153px on the left — identical to research.html and
+// the blog listing — and 322px on the right, which is the gutter posts already
+// had under the old article layout.
+//
+// The `100%` in the min() is load-bearing and must not be dropped for a bare
+// `max-width: 965px`. max-width caps a grid item but never shrinks one, so on
+// any viewport whose page column is narrower than 965px the item keeps its full
+// width and pushes the whole document into a horizontal scroll. Measured: at
+// 768px and 375px the post overflowed by 224px and 617px respectively, while
+// every other page shrank correctly. Tying the cap to the column width instead
+// makes it inert exactly when it should be.
+//
+// `body-classes: blog-post` in blog/posts/_metadata.yml is what puts this class
+// on the page; nothing else on the site sets it.
+// ---------------------------------------------------------------------------
+body.blog-post main.content {
+  max-width: min(965px, 100%);
+  margin-left: 0;
+  margin-right: auto;
+}
+
+// ---------------------------------------------------------------------------
+// Executed-cell figures. Quarto writes an explicit pixel width onto the <img>
+// it generates for a matplotlib figure (width="735" for a colwidth of 8), and
+// nothing in the stack caps it: computed max-width is `none`, so on a narrow
+// viewport the image keeps its authored width and is silently clipped by the
+// column rather than scaled. Measured on a 375px phone: a 735px figure ran to
+// x=762 against a column ending at x=348, cutting off the right third of the
+// plot with no scrollbar to reveal it.
+//
+// height: auto is required alongside, or the intrinsic height attribute is kept
+// against the reduced width and the figure is squashed.
+// ---------------------------------------------------------------------------
+main.content .cell-output-display img {
+  max-width: 100%;
+  height: auto;
+}
+
+// ---------------------------------------------------------------------------
+// Minimum side gutters. Quarto's page grid derives its gutters as leftovers:
+// the leading track is `max(27px, (viewport - page column) / 2)`, so as the
+// window narrows the margin collapses to that 27px floor and the text runs
+// almost to the window edge. Measured before this rule, a post's left gutter
+// went 153px at 1440 -> 73px at 1280 -> 27px at every width below ~1150.
+//
+// Padding the grid container adds to that floor. It is applied to the
+// container rather than to `main` so that every column-* span inside a page
+// shifts together.
+//
+// The value ramps rather than being flat, and that is not decoration: a flat
+// 96px overflowed at 768px, where the grid's own minimum content width already
+// needs the space (measured: 54px of horizontal scroll). Ramping from zero at
+// 768px cannot overflow at the narrow end, so no breakpoint is needed and
+// phones are untouched.
+//
+// Posts get twice the inset of the listing and tab pages. Those pages carry
+// card grids and lists, which want the width; a post is prose, and its
+// narrower measure wants the extra margin. The consequence is that the left
+// gutter is NO LONGER identical across the whole site in the 768-1400 band --
+// a post sits further in than the tab page it was reached from. That is a
+// deliberate exception to the rule the per-page `page-layout: full` settings
+// exist to protect; above ~1400 the grid's own centring exceeds both caps and
+// every page lines up again.
+//
+// Resulting left gutter, tab pages / posts: 27/27 at 768, 44/60 at 900,
+// 59/91 at 1024, 75/123 at 1152-1280, and 153/153 from 1440 up.
+//
+// The navbar sits outside this container and is not inset by it, exactly as
+// before -- its brand has always started left of the content column.
+// ---------------------------------------------------------------------------
+#quarto-content.page-columns {
+  padding-left:  clamp(0px, (100vw - 768px) * 0.125, 48px);
+  padding-right: clamp(0px, (100vw - 768px) * 0.125, 48px);
+}
+
+body.blog-post #quarto-content.page-columns {
+  padding-left:  clamp(0px, (100vw - 768px) * 0.25, 96px);
+  padding-right: clamp(0px, (100vw - 768px) * 0.25, 96px);
+}

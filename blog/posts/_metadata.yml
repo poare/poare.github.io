@@ -1,0 +1,11 @@
+# Applies to every post in this directory, so a new post inherits it without
+# repeating the key in its own front matter.
+
+# Match the layout every other page sets in its front matter, so a post's left
+# gutter lines up with the rest of the site. See index.md for the rationale.
+# On its own this would run prose to the full page column width; theme.scss
+# caps the measure back down -- see the `.blog-post` rule there.
+page-layout: full
+
+# Hook for that cap. Nothing else on the site sets this class.
+body-classes: blog-post
