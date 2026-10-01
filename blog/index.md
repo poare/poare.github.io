@@ -42,7 +42,7 @@ One of the things I love to do in my free time is read math and physics textbook
 ::: {.currently-reading}
 ### Currently reading
 
-- *A Course in Arithmetric* — Jean Pierre Serre
+- *A Course in Arithmetic* — Jean Pierre Serre
 - *A Course in Functional Analysis* — John B. Conway
 :::
 

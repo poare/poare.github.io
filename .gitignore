@@ -8,6 +8,7 @@ __pycache__/
 *.pyc
 .DS_Store
 **/*.quarto_ipynb
+.obsidian/
 
 # Quarto's freeze-thaw staging output, written next to source .qmd files
 # on a re-execution (not redirected by --output-dir). Kept narrowly scoped
