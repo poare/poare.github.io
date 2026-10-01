@@ -88,11 +88,7 @@ file. Then run
 python scripts/sync_series.py
 ```
 
-and commit the `_series-*.md` files it writes next to the post. Part order is
-publication date ascending, so a new post becomes the next part
-automatically, and back-dating one inserts it mid-series and renumbers the
-rest — which is why the script must be re-run after a **date change** too,
-not only after a new post.
+and commit the `_series-*.md` files it writes next to the post. Part order is publication date ascending, so a new post becomes the next part automatically, and back-dating one inserts it mid-series and renumbers the rest — which is why the script must be re-run after a **date change** too, not only after a new post.
 
 **If any affected post is a `.qmd`, it needs one more step.** Quarto's
 freeze cache stores each executed page's markdown *after* its includes are

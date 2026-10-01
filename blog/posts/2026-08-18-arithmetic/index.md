@@ -7,7 +7,7 @@ series: arithmetic
 
 {{< include _series-banner.md >}}
 
-This is my first book club post! I'm reading through Jean-Pierre Serre's [A Course in Arithmetic](https://link.springer.com/book/10.1007/978-1-4684-9884-4) with a friend and want to write some technical blog posts to go along with what I learn as I write the book.
+First post in the Arithmetic series! I'm reading through Jean-Pierre Serre's [A Course in Arithmetic](https://link.springer.com/book/10.1007/978-1-4684-9884-4) and want to write some technical blog posts to go along with what I learn as I write the book.
 
 I'll be starting Chapter 1 soon, but I thought I'd begin by dredging up my memory of Math 250A at Berkeley, which was the graduate abstract algebra course. The book begins with an introduction to field theory. It's not what I would think of now as field theory (as a physicist), but *real* field theory: the study of the algebraic object called a field.
 

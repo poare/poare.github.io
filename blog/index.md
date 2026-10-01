@@ -43,7 +43,7 @@ One of the things I love to do in my free time is read math and physics textbook
 ### Currently reading
 
 - *A Course in Arithmetric* — Jean Pierre Serre
-- *An Introduction to the Theory of Groups* — Joseph Rotman
+- *A Course in Functional Analysis* — John B. Conway
 :::
 
 ## Series
