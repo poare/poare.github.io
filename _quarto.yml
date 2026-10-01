@@ -48,8 +48,10 @@ website:
         href: cv/index.md
       - text: "Notes"
         href: notes/index.md
-      - text: "Blog"
-        href: blog/index.md
+      # Blog tab hidden while the posts are being edited. The pages are still
+      # built and reachable by URL; uncomment to restore the link.
+      # - text: "Blog"
+      #   href: blog/index.md
       - text: "Contact"
         href: contact.md
   # A licence nobody can find protects nothing, so the terms go on every page.

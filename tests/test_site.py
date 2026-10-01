@@ -149,7 +149,8 @@ def test_colours_are_variables_not_literals():
     assert offenders == [], f"hard-coded colours found in rules: {offenders}"
 
 
-TABS = ["Research", "CV", "Notes", "Blog", "Contact"]
+# "Blog" is temporarily out of the navbar; see the comment in _quarto.yml.
+TABS = ["Research", "CV", "Notes", "Contact"]
 
 
 def test_all_tabs_present_in_navbar(site):
