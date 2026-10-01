@@ -514,7 +514,7 @@ def test_blog_has_currently_reading_header(site):
     assert header_pos < listing_pos, (
         "the 'currently reading' header must render above the generated listing"
     )
-    for book in ("An Introduction to the Theory of Groups", "Serre"):
+    for book in ("A Course in Functional Analysis", "Serre"):
         assert book in html, f"reading list is missing {book!r}"
 
 
@@ -1902,7 +1902,7 @@ def test_blog_page_shows_one_card_per_series(site):
     row = extract_element(read_html(site, "blog/index.html"), "listing-series", by="id")
     assert row, "blog page has no series listing block"
     linked = set(re.findall(r'href="[^"]*series/([^/"]+)/', row))
-    assert linked == {"arithmetic", "standard-model"}
+    assert linked == {"arithmetic", "functional-analysis", "standard-model"}
 
 
 def test_blog_page_still_lists_every_post(site):
