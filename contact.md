@@ -12,6 +12,8 @@ title: "Contact"
 
 [poare@bnl.gov](mailto:poare@bnl.gov)
 
+<!-- [patrickoare@gmail.com](mailto:patrickoare@gmail.com) -->
+
 ## Address
 
 Physics Department, Building 510\
