@@ -149,8 +149,9 @@ def test_colours_are_variables_not_literals():
     assert offenders == [], f"hard-coded colours found in rules: {offenders}"
 
 
-# "Blog" is temporarily out of the navbar; see the comment in _quarto.yml.
-TABS = ["Research", "CV", "Notes", "Contact"]
+# "Research" and "Blog" are temporarily out of the navbar; see the comments
+# in _quarto.yml.
+TABS = ["CV", "Notes", "Contact"]
 
 
 def test_all_tabs_present_in_navbar(site):
@@ -366,15 +367,18 @@ def test_active_nav_link_markup_matches_theme_selector(site):
     underline could be entirely non-functional and every other test would
     still pass.
     """
-    navbar = extract_element(read_html(site, "research.html"), "navbar")
-    assert navbar, "no element with class 'navbar' found on research.html"
+    # Probed on the Contact page: the page must be one that has a tab, or
+    # nothing in the navbar is active. Research was used here until its tab
+    # was temporarily hidden.
+    navbar = extract_element(read_html(site, "contact.html"), "navbar")
+    assert navbar, "no element with class 'navbar' found on contact.html"
     both_classes = re.compile(
         r'class="[^"]*(?:\bnav-link\b[^"]*\bactive\b|\bactive\b[^"]*\bnav-link\b)[^"]*"'
     )
     assert both_classes.search(navbar), (
         "no element inside the navbar carries both 'nav-link' and 'active' — "
         "the theme's underline selector does not match Quarto's markup. "
-        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/research.html"
+        "Inspect with: grep -o 'class=\"[^\"]*nav-link[^\"]*\"' _site/contact.html"
     )
 
 
@@ -831,6 +835,25 @@ def test_cv_download_link_resolves_to_a_real_file(site):
     same-origin .pdf href must resolve to a real file in the built output.
     """
     assert_local_links_resolve(site, "cv/index.html")
+
+
+def test_cv_page_embeds_the_pdf_viewer(site):
+    """The CV page gets its presentation from the pdf-note shortcode's `path`
+    form, so it must carry all three parts the notes stubs do, each pointing
+    at a PDF that sits beside the page rather than under ../pdf/.
+
+    Both the button and the viewer are checked against the same file: the
+    link-resolution test above follows hrefs only, so a viewer pointing at a
+    stale filename would otherwise render an empty box and pass.
+    """
+    html = read_html(site, "cv/index.html")
+    pdfs = sorted((site / "cv").glob("*.pdf"))
+    assert len(pdfs) == 1, f"expected exactly one CV PDF in cv/, found {pdfs}"
+    name = pdfs[0].name
+
+    assert extract_element(html, "accent-rule"), "the CV page has no accent rule"
+    assert f'href="{name}"' in html, f"no download button pointing at {name}"
+    assert f'data="{name}"' in html, f"no <object> viewer pointing at {name}"
 
 
 def test_all_notes_stub_pdf_links_resolve(site):

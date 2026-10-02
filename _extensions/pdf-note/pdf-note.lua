@@ -10,6 +10,11 @@
 --
 -- Usage:  {{< pdf-note >}}              slug derived from the filename
 --         {{< pdf-note explicit-slug >}} slug given explicitly
+--         {{< pdf-note path="file.pdf" >}} any PDF, path relative to the page
+--
+-- The `path` form is for a page outside notes/ that wants the same
+-- presentation -- the CV page is the one user. It bypasses the slug and the
+-- ../pdf/ convention entirely.
 
 -- notes/<topic>/<slug>.md -> "<slug>". Handles both path separators so the
 -- extension is not silently macOS/Linux-only.
@@ -23,24 +28,29 @@ end
 
 return {
   ["pdf-note"] = function(args, kwargs, meta)
-    local slug
-    if #args > 0 then
-      slug = pandoc.utils.stringify(args[1])
-    else
-      slug = slug_from_input_file()
-    end
+    -- An absent kwarg stringifies to "", so this is safe when `path` is unset.
+    local pdf_path = pandoc.utils.stringify(kwargs["path"])
 
-    -- Failing loudly matters more than usual here: a nil slug would
-    -- otherwise produce "../pdf/nil.pdf" on a page that still looks
-    -- plausible, and the broken download would only be found by clicking.
-    if slug == nil or slug == "" then
-      error(
-        "pdf-note: could not determine the note slug from the input " ..
-        "filename. Pass it explicitly: {{< pdf-note my-note-slug >}}"
-      )
-    end
+    if pdf_path == "" then
+      local slug
+      if #args > 0 then
+        slug = pandoc.utils.stringify(args[1])
+      else
+        slug = slug_from_input_file()
+      end
 
-    local pdf_path = "../pdf/" .. slug .. ".pdf"
+      -- Failing loudly matters more than usual here: a nil slug would
+      -- otherwise produce "../pdf/nil.pdf" on a page that still looks
+      -- plausible, and the broken download would only be found by clicking.
+      if slug == nil or slug == "" then
+        error(
+          "pdf-note: could not determine the note slug from the input " ..
+          "filename. Pass it explicitly: {{< pdf-note my-note-slug >}}"
+        )
+      end
+
+      pdf_path = "../pdf/" .. slug .. ".pdf"
+    end
 
     local accent_rule = pandoc.Div(
       pandoc.Blocks({}),

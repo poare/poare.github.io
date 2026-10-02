@@ -5,12 +5,9 @@ page-layout: full
 title: "Curriculum Vitae"
 ---
 
-::: {.accent-rule}
-:::
+{{< pdf-note path="patrick-oare-cv.pdf" >}}
 
-[Download PDF](patrick-oare-cv.pdf){.btn .btn-primary}
-
-## Education
+<!-- ## Education
 
 Replace these placeholder sections with real content.
 
@@ -18,4 +15,4 @@ Replace these placeholder sections with real content.
 
 ## Publications
 
-## Talks
+## Talks -->

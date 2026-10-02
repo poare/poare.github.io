@@ -42,8 +42,11 @@ website:
     # change this to `md` at the same time.
     collapse-below: sm
     left:
-      - text: "Research"
-        href: research.md
+      # Research tab hidden while its content stands in for the biography on
+      # the front page. research.html is still built and reachable by URL;
+      # uncomment to restore the link once index.md has its own text again.
+      # - text: "Research"
+      #   href: research.md
       - text: "CV"
         href: cv/index.md
       - text: "Notes"
