@@ -68,6 +68,25 @@ body {
 }
 
 // ---------------------------------------------------------------------------
+// Maths size. KaTeX draws maths at 1.21em by default, to match the x-height of
+// Times-like body fonts. The body here is CMU Serif, the same Computer Modern
+// design as KaTeX's own fonts, so the boost makes maths visibly larger than
+// the prose around it.
+//
+// `main.content` raises the specificity so this wins whatever order the two
+// stylesheets load in.
+// ---------------------------------------------------------------------------
+main.content .katex {
+  font-size: 1em;
+}
+
+// Display equations ($$...$$) are set a step larger than the prose so they
+// read as the focal point of the paragraph. Inline maths stays at 1em above.
+main.content .katex-display > .katex {
+  font-size: 1.1em;
+}
+
+// ---------------------------------------------------------------------------
 // Navigation. The active tab gets a real text underline sitting just below the
 // letterforms — not a bottom border on the navbar. 1px rather than CMU's own
 // 0.65px metric because 1px is exactly one CSS pixel and therefore renders
